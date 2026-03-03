@@ -1,0 +1,276 @@
+---
+title: 'Create Completion'
+description: 'POST /v1/completions - Generate text completions'
+---
+
+## Endpoint
+
+```
+POST /v1/completions
+```
+
+Creates a completion for the provided prompt using the specified model.
+
+<Note>
+  The completions endpoint is considered legacy. Use the [Chat Completions](/api/chat/completions) endpoint for new applications.
+</Note>
+
+## Request
+
+### Headers
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`
+</ParamField>
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The AI provider to use
+</ParamField>
+
+<ParamField header="x-portkey-api-key" type="string" required>
+  Your API key for the specified provider
+</ParamField>
+
+### Body Parameters
+
+<ParamField body="model" type="string" required>
+  The model to use for completion (e.g., `gpt-3.5-turbo-instruct`, `text-davinci-003`)
+</ParamField>
+
+<ParamField body="prompt" type="string | array" required>
+  The prompt(s) to generate completions for
+</ParamField>
+
+<ParamField body="max_tokens" type="integer" default={16}>
+  Maximum number of tokens to generate
+</ParamField>
+
+<ParamField body="temperature" type="number" default={1}>
+  Sampling temperature between 0 and 2
+</ParamField>
+
+<ParamField body="top_p" type="number" default={1}>
+  Nucleus sampling parameter
+</ParamField>
+
+<ParamField body="n" type="integer" default={1}>
+  Number of completions to generate
+</ParamField>
+
+<ParamField body="stream" type="boolean" default={false}>
+  Whether to stream the response
+</ParamField>
+
+<ParamField body="stop" type="string | array">
+  Up to 4 sequences where the API will stop generating
+</ParamField>
+
+<ParamField body="presence_penalty" type="number" default={0}>
+  Penalty for token presence (-2.0 to 2.0)
+</ParamField>
+
+<ParamField body="frequency_penalty" type="number" default={0}>
+  Penalty for token frequency (-2.0 to 2.0)
+</ParamField>
+
+<ParamField body="suffix" type="string">
+  Text to append after the completion
+</ParamField>
+
+<ParamField body="echo" type="boolean" default={false}>
+  Echo back the prompt in addition to the completion
+</ParamField>
+
+<ParamField body="best_of" type="integer" default={1}>
+  Generate multiple completions server-side and return the best
+</ParamField>
+
+<ParamField body="logprobs" type="integer">
+  Include log probabilities on the most likely tokens
+</ParamField>
+
+<ParamField body="user" type="string">
+  Unique identifier for the end-user
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Unique identifier for the completion
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  Object type, always `text_completion`
+</ResponseField>
+
+<ResponseField name="created" type="integer">
+  Unix timestamp of creation
+</ResponseField>
+
+<ResponseField name="model" type="string">
+  The model used for completion
+</ResponseField>
+
+<ResponseField name="choices" type="array">
+  Array of completion choices
+  
+  <ResponseField name="text" type="string">
+    The generated text
+  </ResponseField>
+  
+  <ResponseField name="index" type="integer">
+    Choice index
+  </ResponseField>
+  
+  <ResponseField name="logprobs" type="object">
+    Log probability information (if requested)
+  </ResponseField>
+  
+  <ResponseField name="finish_reason" type="string">
+    Reason for completion: `stop`, `length`, or `content_filter`
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="usage" type="object">
+  Token usage information
+  
+  <ResponseField name="prompt_tokens" type="integer">
+    Number of tokens in the prompt
+  </ResponseField>
+  
+  <ResponseField name="completion_tokens" type="integer">
+    Number of tokens in the completion
+  </ResponseField>
+  
+  <ResponseField name="total_tokens" type="integer">
+    Total tokens used
+  </ResponseField>
+</ResponseField>
+
+## Examples
+
+### Basic Completion
+
+```bash
+curl http://localhost:8787/v1/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "model": "gpt-3.5-turbo-instruct",
+    "prompt": "Write a tagline for an ice cream shop.",
+    "max_tokens": 20
+  }'
+```
+
+### Response
+
+```json
+{
+  "id": "cmpl-123",
+  "object": "text_completion",
+  "created": 1677652288,
+  "model": "gpt-3.5-turbo-instruct",
+  "choices": [{
+    "text": " Sweet treats for every occasion!",
+    "index": 0,
+    "logprobs": null,
+    "finish_reason": "stop"
+  }],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 7,
+    "total_tokens": 17
+  }
+}
+```
+
+### Python SDK
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.completions.create(
+    model="gpt-3.5-turbo-instruct",
+    prompt="Write a tagline for an ice cream shop.",
+    max_tokens=20
+)
+
+print(response.choices[0].text)
+```
+
+### JavaScript SDK
+
+```javascript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+  provider: 'openai',
+  Authorization: 'sk-...'
+});
+
+const response = await client.completions.create({
+  model: 'gpt-3.5-turbo-instruct',
+  prompt: 'Write a tagline for an ice cream shop.',
+  max_tokens: 20
+});
+
+console.log(response.choices[0].text);
+```
+
+### Multiple Completions
+
+```bash
+curl http://localhost:8787/v1/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "model": "gpt-3.5-turbo-instruct",
+    "prompt": "Complete this sentence: The future of AI is",
+    "max_tokens": 30,
+    "n": 3
+  }'
+```
+
+### Streaming Completion
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+stream = client.completions.create(
+    model="gpt-3.5-turbo-instruct",
+    prompt="Write a short poem about coding",
+    max_tokens=50,
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].text:
+        print(chunk.choices[0].text, end="", flush=True)
+```
+
+### With Stop Sequences
+
+```bash
+curl http://localhost:8787/v1/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "model": "gpt-3.5-turbo-instruct",
+    "prompt": "List three programming languages:\n1.",
+    "max_tokens": 50,
+    "stop": ["\n4."]
+  }'
+```

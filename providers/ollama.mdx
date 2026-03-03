@@ -1,0 +1,560 @@
+---
+title: 'Ollama'
+description: 'Run LLMs locally with Ollama - private, fast, and free'
+---
+
+## Overview
+
+Ollama enables you to run large language models locally on your own hardware. Perfect for development, testing, privacy-sensitive applications, and offline use. Access Llama, Mistral, Gemma, and many more models without any API costs.
+
+**Base URL:** Your local Ollama server (default: `http://localhost:11434`)
+
+## Supported Features
+
+- ✅ Chat Completions
+- ✅ Streaming
+- ✅ Embeddings
+- ✅ Vision (multimodal models)
+- ✅ Custom Models
+- ✅ Model Library (100+ models)
+- ❌ Function Calling (limited support)
+- ❌ Image Generation
+
+## Prerequisites
+
+### Install Ollama
+
+<Tabs>
+  <Tab title="macOS">
+    ```bash
+    # Download from ollama.com or use:
+    brew install ollama
+    
+    # Start Ollama
+    ollama serve
+    ```
+  </Tab>
+  
+  <Tab title="Linux">
+    ```bash
+    # Install Ollama
+    curl -fsSL https://ollama.com/install.sh | sh
+    
+    # Start Ollama
+    ollama serve
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    ```powershell
+    # Download installer from ollama.com
+    # Or use Windows Subsystem for Linux (WSL)
+    ```
+  </Tab>
+  
+  <Tab title="Docker">
+    ```bash
+    # Run Ollama in Docker
+    docker run -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
+    ```
+  </Tab>
+</Tabs>
+
+### Pull a Model
+
+```bash
+# Pull Llama 3.1 (4.7GB)
+ollama pull llama3.1
+
+# Pull Mistral (4.1GB)
+ollama pull mistral
+
+# Pull a vision model
+ollama pull llava
+
+# List downloaded models
+ollama list
+```
+
+## Quick Start
+
+### Chat Completions
+
+<CodeGroup>
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="ollama",
+    custom_host="http://localhost:11434"  # Your Ollama server
+)
+
+response = client.chat.completions.create(
+    model="llama3.1",
+    messages=[
+        {"role": "user", "content": "Explain the benefits of running models locally"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "ollama",
+    customHost: "http://localhost:11434"  // Your Ollama server
+});
+
+const response = await client.chat.completions.create({
+    model: "llama3.1",
+    messages: [
+        {role: "user", content: "Explain the benefits of running models locally"}
+    ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: ollama" \
+  -H "x-portkey-custom-host: http://localhost:11434" \
+  -d '{
+    "model": "llama3.1",
+    "messages": [
+      {"role": "user", "content": "Hello from local LLM!"}
+    ]
+  }'
+```
+</CodeGroup>
+
+### Streaming
+
+```python
+stream = client.chat.completions.create(
+    model="llama3.1",
+    messages=[{"role": "user", "content": "Tell me a story"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+## Popular Models
+
+### Meta Llama
+
+| Model | Size | Memory | Description |
+|-------|------|--------|-------------|
+| `llama3.3` | 43GB | 32GB | Latest Llama 3.3 70B |
+| `llama3.1` | 4.7GB | 8GB | Llama 3.1 8B |
+| `llama3.1:70b` | 40GB | 48GB | Llama 3.1 70B |
+| `llama3.1:405b` | 231GB | 256GB+ | Largest Llama |
+| `llama2` | 3.8GB | 8GB | Llama 2 7B |
+
+### Mistral & Mixtral
+
+| Model | Size | Memory | Description |
+|-------|------|--------|-------------|
+| `mistral` | 4.1GB | 8GB | Mistral 7B |
+| `mistral-large` | 40GB | 48GB | Mistral Large |
+| `mixtral` | 26GB | 32GB | Mixtral 8x7B MoE |
+
+### Google Gemma
+
+| Model | Size | Memory | Description |
+|-------|------|--------|-------------|
+| `gemma2` | 5.4GB | 8GB | Gemma 2 9B |
+| `gemma2:27b` | 16GB | 20GB | Gemma 2 27B |
+| `gemma` | 5.0GB | 8GB | Gemma 7B |
+
+### Vision Models
+
+| Model | Size | Memory | Description |
+|-------|------|--------|-------------|
+| `llava` | 4.7GB | 8GB | Llama with vision |
+| `llava:34b` | 20GB | 24GB | Larger vision model |
+| `bakllava` | 4.7GB | 8GB | Alternative vision |
+
+### Specialized Models
+
+| Model | Size | Purpose |
+|-------|------|----------|
+| `codellama` | 3.8GB | Code generation |
+| `phi3` | 2.3GB | Microsoft's small model |
+| `qwen2.5` | 4.7GB | Multilingual |
+| `deepseek-coder` | 3.8GB | Advanced coding |
+| `nous-hermes2` | 4.1GB | General purpose |
+
+<Note>
+  **Ollama excels at:**
+  - **Privacy** - Data never leaves your machine
+  - **Zero cost** - No API fees
+  - **Offline use** - Works without internet
+  - **Fast iteration** - No network latency
+  - **Customization** - Create and modify models
+</Note>
+
+## Configuration Options
+
+```python
+client = Portkey(
+    provider="ollama",
+    custom_host="http://localhost:11434"  # Your Ollama server URL
+)
+```
+
+### Remote Ollama Server
+
+```python
+# Connect to Ollama on another machine
+client = Portkey(
+    provider="ollama",
+    custom_host="http://192.168.1.100:11434"
+)
+```
+
+### Docker Container
+
+```python
+# If Ollama is in Docker
+client = Portkey(
+    provider="ollama",
+    custom_host="http://localhost:11434"
+)
+```
+
+## Advanced Features
+
+### System Messages
+
+```python
+response = client.chat.completions.create(
+    model="llama3.1",
+    messages=[
+        {
+            "role": "system",
+            "content": "You are a helpful Python programming expert."
+        },
+        {
+            "role": "user",
+            "content": "How do I read a file?"
+        }
+    ]
+)
+```
+
+### Vision (Multimodal)
+
+```python
+response = client.chat.completions.create(
+    model="llava",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What's in this image?"},
+            {
+                "type": "image_url",
+                "image_url": {"url": "https://example.com/image.jpg"}
+            }
+        ]
+    }]
+)
+```
+
+Local image:
+
+```python
+import base64
+
+with open("local_image.jpg", "rb") as f:
+    image_data = base64.b64encode(f.read()).decode()
+
+response = client.chat.completions.create(
+    model="llava",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "Describe this image"},
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}
+            }
+        ]
+    }]
+)
+```
+
+### Embeddings
+
+```python
+response = client.embeddings.create(
+    model="llama3.1",
+    input="Local embeddings with Ollama"
+)
+
+embedding = response.data[0].embedding
+print(f"Dimensions: {len(embedding)}")
+```
+
+### Temperature Control
+
+```python
+# Deterministic
+response = client.chat.completions.create(
+    model="llama3.1",
+    messages=[{"role": "user", "content": "What is 2+2?"}],
+    temperature=0.0
+)
+
+# Creative
+response = client.chat.completions.create(
+    model="llama3.1",
+    messages=[{"role": "user", "content": "Write a poem"}],
+    temperature=1.0
+)
+```
+
+## Model Management
+
+### List Models
+
+```bash
+# List all downloaded models
+ollama list
+```
+
+### Pull Models
+
+```bash
+# Download a model
+ollama pull llama3.1
+
+# Pull specific size
+ollama pull llama3.1:70b
+
+# Pull with tag
+ollama pull mistral:7b-instruct-v0.2-q4_0
+```
+
+### Remove Models
+
+```bash
+# Free up space
+ollama rm llama2
+```
+
+### Run Interactive
+
+```bash
+# Chat with model in terminal
+ollama run llama3.1
+
+# Exit with /bye
+```
+
+## Custom Models
+
+### Create a Custom Model
+
+1. Create a `Modelfile`:
+
+```dockerfile
+FROM llama3.1
+
+# Set custom parameters
+PARAMETER temperature 0.8
+PARAMETER top_p 0.9
+
+# Set custom system message
+SYSTEM You are a helpful Python coding assistant. Always provide working code examples.
+```
+
+2. Create the model:
+
+```bash
+ollama create python-expert -f Modelfile
+```
+
+3. Use your custom model:
+
+```python
+response = client.chat.completions.create(
+    model="python-expert",
+    messages=[{"role": "user", "content": "Write a quicksort function"}]
+)
+```
+
+## Fallback Configuration
+
+Use local Ollama first, fallback to cloud:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {
+            "provider": "ollama",
+            "custom_host": "http://localhost:11434",
+            "override_params": {"model": "llama3.1"}
+        },
+        {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "override_params": {"model": "gpt-4o-mini"}
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Best Practices
+
+1. **Choose appropriate model size** - Match to your hardware
+2. **Use quantized models** - Smaller, faster (q4_0, q5_1)
+3. **Monitor memory usage** - Leave headroom for system
+4. **Keep models updated** - `ollama pull` to update
+5. **Use GPU if available** - Much faster inference
+6. **Warm up models** - First request may be slow
+7. **Batch similar requests** - Amortize startup cost
+8. **Create custom models** - Optimize for your use case
+
+## Hardware Requirements
+
+### Minimum Specs
+- **CPU**: Modern quad-core
+- **RAM**: 8GB (for 7B models)
+- **Disk**: 10GB free space
+
+### Recommended
+- **CPU**: 8+ cores
+- **RAM**: 16GB+ (for 13B models)
+- **GPU**: NVIDIA with 8GB+ VRAM (optional but recommended)
+- **Disk**: 50GB+ SSD
+
+### For Larger Models
+- **70B models**: 48GB+ RAM
+- **405B models**: 256GB+ RAM or multi-GPU setup
+
+## Performance Tips
+
+### Use GPU
+
+Ollama automatically uses GPU if available (NVIDIA, Apple Silicon).
+
+### Quantization Levels
+
+| Suffix | Size | Quality | Speed |
+|--------|------|---------|-------|
+| `q4_0` | Smallest | Good | Fastest |
+| `q4_1` | Small | Better | Fast |
+| `q5_0` | Medium | Good | Medium |
+| `q5_1` | Medium | Better | Medium |
+| `q8_0` | Large | Best | Slow |
+| (none) | Largest | Perfect | Slowest |
+
+Example:
+```bash
+# Faster, smaller
+ollama pull llama3.1:q4_0
+
+# Best quality
+ollama pull llama3.1:q8_0
+```
+
+## Use Cases
+
+### Development & Testing
+```python
+# Test locally before deploying to production
+dev_client = Portkey(
+    provider="ollama",
+    custom_host="http://localhost:11434"
+)
+```
+
+### Privacy-Sensitive Applications
+```python
+# Keep sensitive data on-premises
+response = client.chat.completions.create(
+    model="llama3.1",
+    messages=[{"role": "user", "content": "Analyze this private data..."}]
+)
+```
+
+### Offline Applications
+```python
+# Works without internet
+response = client.chat.completions.create(
+    model="llama3.1",
+    messages=[{"role": "user", "content": "Help me while offline"}]
+)
+```
+
+### Cost Optimization
+```python
+# Zero API costs
+for query in large_batch:
+    response = client.chat.completions.create(
+        model="llama3.1",
+        messages=[{"role": "user", "content": query}]
+    )
+```
+
+## Pricing
+
+**Ollama is completely free!**
+
+- No API costs
+- No rate limits
+- No usage tracking
+- Run unlimited requests
+
+Only costs: Your hardware and electricity
+
+## Troubleshooting
+
+### Model Not Found
+```bash
+# Make sure model is pulled
+ollama pull llama3.1
+ollama list  # Verify it's there
+```
+
+### Out of Memory
+```bash
+# Use smaller model or quantized version
+ollama pull llama3.1:q4_0
+```
+
+### Slow Performance
+```bash
+# Check if GPU is being used
+ollama ps
+
+# Use smaller/quantized model
+ollama pull mistral:7b-instruct-q4_0
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Model Library" icon="books" href="https://ollama.com/library">
+    Browse 100+ available models
+  </Card>
+  <Card title="Fallback Routing" icon="arrows-rotate" href="/essentials/fallbacks">
+    Fallback to cloud when needed
+  </Card>
+  <Card title="Cost Optimization" icon="dollar-sign" href="/essentials/cost-optimization">
+    Optimize AI costs
+  </Card>
+  <Card title="Privacy" icon="lock" href="/essentials/privacy">
+    Private AI deployments
+  </Card>
+</CardGroup>

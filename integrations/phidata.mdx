@@ -1,0 +1,697 @@
+---
+title: "Phidata Integration"
+description: "Use Portkey AI Gateway with Phidata for AI assistants with memory and knowledge"
+---
+
+Integrate Portkey with Phidata to build production-ready AI assistants with access to 250+ LLMs, automatic fallbacks, and complete observability.
+
+## Overview
+
+Portkey enhances Phidata applications with:
+
+- **Multi-Provider Support**: Connect to 250+ LLMs for your AI assistants
+- **Reliability**: Automatic fallbacks and retries for assistant interactions
+- **Observability**: Full logging and tracing for assistant conversations
+- **Performance**: Smart caching to improve response times
+- **Cost Optimization**: Track and reduce token usage
+
+## Installation
+
+```bash
+pip install portkey-ai phidata
+```
+
+## Quick Start
+
+Phidata integrates with Portkey through OpenAI-compatible configuration:
+
+<Steps>
+  <Step title="Import Libraries">
+    ```python
+    from phi.assistant import Assistant
+    from phi.llm.openai import OpenAIChat
+    from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+    ```
+  </Step>
+  
+  <Step title="Configure Portkey">
+    ```python
+    portkey_headers = createHeaders(
+        api_key="your-portkey-api-key",
+        provider="openai"
+    )
+    ```
+  </Step>
+  
+  <Step title="Create LLM with Portkey">
+    ```python
+    llm = OpenAIChat(
+        model="gpt-4",
+        api_key="your-openai-api-key",
+        base_url=PORTKEY_GATEWAY_URL,
+        default_headers=portkey_headers
+    )
+    ```
+  </Step>
+  
+  <Step title="Create Assistant">
+    ```python
+    assistant = Assistant(
+        llm=llm,
+        description="You are a helpful AI assistant"
+    )
+    ```
+  </Step>
+  
+  <Step title="Use the Assistant">
+    ```python
+    assistant.print_response("What is quantum computing?")
+    ```
+  </Step>
+</Steps>
+
+## Complete Assistant Example
+
+Build a comprehensive AI assistant:
+
+```python
+from phi.assistant import Assistant
+from phi.llm.openai import OpenAIChat
+from phi.tools.duckduckgo import DuckDuckGo
+from phi.tools.wikipedia import WikipediaTools
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+# Configure Portkey
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={
+        "environment": "production",
+        "assistant_type": "research"
+    }
+)
+
+# Create LLM
+llm = OpenAIChat(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Create assistant with tools
+assistant = Assistant(
+    llm=llm,
+    description="You are a helpful research assistant",
+    tools=[DuckDuckGo(), WikipediaTools()],
+    show_tool_calls=True,
+    markdown=True
+)
+
+# Use the assistant
+assistant.print_response("What are the latest developments in fusion energy?")
+```
+
+## Using Different Providers
+
+Switch between LLM providers easily:
+
+<CodeGroup>
+```python OpenAI GPT-4
+from phi.llm.openai import OpenAIChat
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = OpenAIChat(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+assistant = Assistant(llm=llm)
+```
+
+```python Anthropic Claude
+from phi.llm.openai import OpenAIChat
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="anthropic"
+)
+
+llm = OpenAIChat(
+    model="claude-3-opus-20240229",
+    api_key="your-anthropic-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+assistant = Assistant(llm=llm)
+```
+
+```python Google Gemini
+from phi.llm.openai import OpenAIChat
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="google"
+)
+
+llm = OpenAIChat(
+    model="gemini-1.5-pro",
+    api_key="your-google-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+assistant = Assistant(llm=llm)
+```
+</CodeGroup>
+
+## Advanced Routing
+
+### Fallback Configuration
+
+Automatically fallback to backup providers:
+
+```python
+from phi.assistant import Assistant
+from phi.llm.openai import OpenAIChat
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"virtual_key": "openai-virtual-key"},
+        {"virtual_key": "anthropic-virtual-key"},
+        {"virtual_key": "together-virtual-key"}
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+
+llm = OpenAIChat(
+    model="gpt-4",
+    api_key="X",  # Virtual keys in config
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+assistant = Assistant(
+    llm=llm,
+    description="Reliable assistant with fallbacks"
+)
+```
+
+### Load Balancing
+
+Distribute requests across multiple models:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "virtual_key": "openai-key-1",
+            "weight": 0.7
+        },
+        {
+            "virtual_key": "openai-key-2",
+            "weight": 0.3
+        }
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+```
+
+### Retry Configuration
+
+```python
+config = {
+    "retry": {
+        "attempts": 5,
+        "on_status_codes": [429, 500, 502, 503]
+    }
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    config=config
+)
+```
+
+## Assistant with Memory
+
+Create assistants with persistent memory:
+
+```python
+from phi.assistant import Assistant
+from phi.llm.openai import OpenAIChat
+from phi.storage.assistant.postgres import PgAssistantStorage
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+# Configure Portkey
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={"feature": "memory"}
+)
+
+llm = OpenAIChat(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Create assistant with PostgreSQL storage
+assistant = Assistant(
+    llm=llm,
+    storage=PgAssistantStorage(
+        table_name="assistant_sessions",
+        db_url="postgresql://user:pass@localhost:5432/ai"
+    ),
+    description="Assistant with memory",
+    add_chat_history_to_messages=True,
+    num_history_messages=4
+)
+
+# First conversation
+assistant.print_response("My name is Alice")
+
+# Later conversation - assistant remembers
+assistant.print_response("What's my name?")
+```
+
+## Knowledge Base Integration
+
+Build assistants with knowledge bases:
+
+```python
+from phi.assistant import Assistant
+from phi.llm.openai import OpenAIChat
+from phi.knowledge.pdf import PDFUrlKnowledgeBase
+from phi.vectordb.pgvector import PgVector2
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+# Configure Portkey
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = OpenAIChat(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Create knowledge base
+knowledge_base = PDFUrlKnowledgeBase(
+    urls=["https://example.com/document.pdf"],
+    vector_db=PgVector2(
+        collection="pdf_documents",
+        db_url="postgresql://user:pass@localhost:5432/ai"
+    )
+)
+
+# Load knowledge base
+knowledge_base.load(recreate=False)
+
+# Create assistant with knowledge
+assistant = Assistant(
+    llm=llm,
+    knowledge_base=knowledge_base,
+    description="Assistant with document knowledge",
+    add_references_to_prompt=True
+)
+
+assistant.print_response("What does the document say about AI?")
+```
+
+## Using Phidata Tools
+
+Integrate various tools with your assistant:
+
+```python
+from phi.assistant import Assistant
+from phi.llm.openai import OpenAIChat
+from phi.tools.duckduckgo import DuckDuckGo
+from phi.tools.yfinance import YFinanceTools
+from phi.tools.arxiv_toolkit import ArxivToolkit
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = OpenAIChat(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Multi-tool assistant
+assistant = Assistant(
+    llm=llm,
+    tools=[
+        DuckDuckGo(),
+        YFinanceTools(stock_price=True, analyst_recommendations=True),
+        ArxivToolkit()
+    ],
+    description="Multi-purpose research assistant",
+    show_tool_calls=True,
+    markdown=True
+)
+
+assistant.print_response(
+    "What is the current stock price of AAPL and find recent papers about AI?"
+)
+```
+
+## Caching for Assistants
+
+Enable caching to reduce costs:
+
+```python
+config = {
+    "cache": {
+        "mode": "semantic",
+        "max_age": 3600  # 1 hour
+    }
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    config=config
+)
+
+llm = OpenAIChat(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+## Streaming Responses
+
+Stream assistant responses:
+
+```python
+from phi.assistant import Assistant
+from phi.llm.openai import OpenAIChat
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = OpenAIChat(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+assistant = Assistant(
+    llm=llm,
+    description="Streaming assistant"
+)
+
+# Stream response
+for chunk in assistant.run("Tell me a long story", stream=True):
+    print(chunk.content, end="", flush=True)
+```
+
+## Team of Assistants
+
+Create multiple specialized assistants:
+
+```python
+from phi.assistant import Assistant
+from phi.llm.openai import OpenAIChat
+from phi.tools.duckduckgo import DuckDuckGo
+from phi.tools.python import PythonTools
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = OpenAIChat(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Research assistant
+researcher = Assistant(
+    name="Researcher",
+    llm=llm,
+    description="Research information on the web",
+    tools=[DuckDuckGo()],
+    show_tool_calls=True
+)
+
+# Python assistant
+python_assistant = Assistant(
+    name="PythonDeveloper",
+    llm=llm,
+    description="Write and run Python code",
+    tools=[PythonTools()],
+    show_tool_calls=True
+)
+
+# Coordinator assistant
+coordinator = Assistant(
+    name="Coordinator",
+    llm=llm,
+    description="Coordinate between researchers and developers",
+    team=[researcher, python_assistant],
+    show_tool_calls=True
+)
+
+# Use the team
+coordinator.print_response(
+    "Research Python best practices and create a code example"
+)
+```
+
+## Observability and Tracking
+
+Add detailed tracking to your assistants:
+
+```python
+from phi.assistant import Assistant
+from phi.llm.openai import OpenAIChat
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={
+        "user_id": "user_123",
+        "session_id": "session_456",
+        "assistant_type": "customer_support",
+        "environment": "production"
+    },
+    trace_id="assistant-conversation-001"
+)
+
+llm = OpenAIChat(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+assistant = Assistant(llm=llm)
+```
+
+View metrics in Portkey dashboard:
+- Conversation flows
+- Token usage per session
+- Response latency
+- Tool usage patterns
+- Cache hit rates
+- Error tracking
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Fallbacks for Production">
+    Configure fallback providers for reliability:
+    ```python
+    config = {"strategy": {"mode": "fallback"}, "targets": [...]}
+    ```
+  </Accordion>
+  
+  <Accordion title="Enable Caching">
+    Use semantic caching for FAQ-style assistants:
+    ```python
+    config = {"cache": {"mode": "semantic", "max_age": 3600}}
+    ```
+  </Accordion>
+  
+  <Accordion title="Add Metadata">
+    Track user sessions with metadata:
+    ```python
+    metadata={"user_id": "user_123", "session_id": "session_456"}
+    ```
+  </Accordion>
+  
+  <Accordion title="Monitor Token Usage">
+    Use the Portkey dashboard to track and optimize token consumption.
+  </Accordion>
+  
+  <Accordion title="Use Knowledge Bases">
+    Integrate knowledge bases for domain-specific assistants to reduce hallucinations.
+  </Accordion>
+</AccordionGroup>
+
+## Example: Customer Support Assistant
+
+Complete customer support assistant:
+
+```python
+from phi.assistant import Assistant
+from phi.llm.openai import OpenAIChat
+from phi.tools.duckduckgo import DuckDuckGo
+from phi.knowledge.pdf import PDFKnowledgeBase
+from phi.vectordb.pgvector import PgVector2
+from phi.storage.assistant.postgres import PgAssistantStorage
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+# Configure Portkey with fallbacks
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"virtual_key": "openai-key"},
+        {"virtual_key": "anthropic-key"}
+    ],
+    "cache": {
+        "mode": "semantic",
+        "max_age": 1800
+    }
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config,
+    metadata={"assistant": "customer_support"}
+)
+
+llm = OpenAIChat(
+    model="gpt-4",
+    api_key="X",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Create knowledge base from documentation
+knowledge_base = PDFKnowledgeBase(
+    path="docs/",
+    vector_db=PgVector2(
+        collection="product_docs",
+        db_url="postgresql://user:pass@localhost:5432/ai"
+    )
+)
+knowledge_base.load()
+
+# Create assistant with memory and knowledge
+support_assistant = Assistant(
+    name="SupportBot",
+    llm=llm,
+    knowledge_base=knowledge_base,
+    storage=PgAssistantStorage(
+        table_name="support_sessions",
+        db_url="postgresql://user:pass@localhost:5432/ai"
+    ),
+    description="""You are a helpful customer support assistant.
+    Use the knowledge base to answer questions accurately.
+    Be friendly and professional.""",
+    tools=[DuckDuckGo()],
+    add_chat_history_to_messages=True,
+    add_references_to_prompt=True,
+    markdown=True,
+    debug_mode=True
+)
+
+# Handle customer query
+support_assistant.print_response(
+    "How do I reset my password?",
+    stream=True
+)
+```
+
+## Error Handling
+
+Implement robust error handling:
+
+```python
+from phi.assistant import Assistant
+from phi.llm.openai import OpenAIChat
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+config = {
+    "retry": {"attempts": 3},
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"virtual_key": "openai-key"},
+        {"virtual_key": "anthropic-key"}
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+
+try:
+    llm = OpenAIChat(
+        model="gpt-4",
+        api_key="X",
+        base_url=PORTKEY_GATEWAY_URL,
+        default_headers=portkey_headers
+    )
+    
+    assistant = Assistant(llm=llm)
+    response = assistant.run("Your query")
+    print(response)
+except Exception as e:
+    print(f"Error: {e}")
+```
+
+## Resources
+
+- [Phidata Documentation](https://docs.phidata.com/)
+- [Portkey Gateway Configs](/concepts/configs)
+- [Phidata Tools](https://docs.phidata.com/tools/introduction)
+- [Example Notebooks](https://github.com/Portkey-AI/gateway/tree/main/cookbook/integrations)
+
+<Note>
+  Need help? Join our [Discord community](https://discord.gg/portkey) for support with Phidata implementations.
+</Note>

@@ -1,0 +1,251 @@
+---
+title: Create Batch
+description: Create a large batch of API requests for asynchronous processing
+---
+
+## POST /v1/batches
+
+Create a batch of API requests to be processed asynchronously. Batches are useful for processing large volumes of requests that don't require immediate responses.
+
+## Authentication
+
+Requires provider authentication headers:
+
+```bash
+x-portkey-provider: openai
+Authorization: Bearer YOUR_OPENAI_API_KEY
+```
+
+## Request
+
+### Headers
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The provider to route the request to (e.g., `openai`)
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for the provider API
+</ParamField>
+
+### Body Parameters
+
+<ParamField body="input_file_id" type="string" required>
+  The ID of an uploaded file that contains requests for the batch. The file must be a JSONL file with each line containing a request object.
+</ParamField>
+
+<ParamField body="endpoint" type="string" required>
+  The endpoint to be used for all requests in the batch. Currently supports:
+  - `/v1/chat/completions`
+  - `/v1/completions`
+  - `/v1/embeddings`
+</ParamField>
+
+<ParamField body="completion_window" type="string" required>
+  The time frame within which the batch should be processed. Currently only `24h` is supported.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Optional metadata to attach to the batch
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  The batch identifier
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  The object type, always "batch"
+</ResponseField>
+
+<ResponseField name="endpoint" type="string">
+  The endpoint used for the batch
+</ResponseField>
+
+<ResponseField name="errors" type="object">
+  Error information if any requests failed
+</ResponseField>
+
+<ResponseField name="input_file_id" type="string">
+  The ID of the input file
+</ResponseField>
+
+<ResponseField name="completion_window" type="string">
+  The completion time frame
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The status of the batch: `validating`, `in_progress`, `finalizing`, `completed`, `failed`, or `cancelled`
+</ResponseField>
+
+<ResponseField name="output_file_id" type="string">
+  The ID of the file containing the outputs (available when status is `completed`)
+</ResponseField>
+
+<ResponseField name="error_file_id" type="string">
+  The ID of the file containing errors (if any)
+</ResponseField>
+
+<ResponseField name="created_at" type="integer">
+  Unix timestamp of when the batch was created
+</ResponseField>
+
+<ResponseField name="in_progress_at" type="integer">
+  Unix timestamp of when the batch started processing
+</ResponseField>
+
+<ResponseField name="completed_at" type="integer">
+  Unix timestamp of when the batch completed
+</ResponseField>
+
+<ResponseField name="metadata" type="object">
+  Custom metadata attached to the batch
+</ResponseField>
+
+## Example
+
+### Input File Format
+
+First, create a JSONL file with your requests:
+
+```json
+{"custom_id": "request-1", "method": "POST", "url": "/v1/chat/completions", "body": {"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "What is 2+2?"}]}}
+{"custom_id": "request-2", "method": "POST", "url": "/v1/chat/completions", "body": {"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "What is the capital of France?"}]}}
+```
+
+<CodeGroup>
+
+```bash cURL
+# First, upload the batch file
+curl https://localhost:8787/v1/files \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -F purpose="batch" \
+  -F file="@batch_requests.jsonl"
+
+# Then create the batch
+curl https://localhost:8787/v1/batches \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input_file_id": "file-abc123",
+    "endpoint": "/v1/chat/completions",
+    "completion_window": "24h"
+  }'
+```
+
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-***"
+)
+
+# Upload the batch file
+with open("batch_requests.jsonl", "rb") as file:
+    batch_file = client.files.create(
+        file=file,
+        purpose="batch"
+    )
+
+# Create the batch
+batch = client.batches.create(
+    input_file_id=batch_file.id,
+    endpoint="/v1/chat/completions",
+    completion_window="24h",
+    metadata={"description": "Daily batch job"}
+)
+
+print(f"Batch created: {batch.id}")
+print(f"Status: {batch.status}")
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+import fs from 'fs';
+
+const client = new Portkey({
+    provider: "openai",
+    Authorization: "sk-***"
+});
+
+// Upload the batch file
+const batchFile = await client.files.create({
+    file: fs.createReadStream("batch_requests.jsonl"),
+    purpose: "batch"
+});
+
+// Create the batch
+const batch = await client.batches.create({
+    input_file_id: batchFile.id,
+    endpoint: "/v1/chat/completions",
+    completion_window: "24h",
+    metadata: { description: "Daily batch job" }
+});
+
+console.log(`Batch created: ${batch.id}`);
+console.log(`Status: ${batch.status}`);
+```
+
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "id": "batch_abc123",
+  "object": "batch",
+  "endpoint": "/v1/chat/completions",
+  "errors": null,
+  "input_file_id": "file-abc123",
+  "completion_window": "24h",
+  "status": "validating",
+  "output_file_id": null,
+  "error_file_id": null,
+  "created_at": 1713894800,
+  "in_progress_at": null,
+  "completed_at": null,
+  "metadata": {
+    "description": "Daily batch job"
+  }
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Batch Size Recommendations">
+    - Keep batch sizes reasonable (1,000 - 50,000 requests)
+    - Monitor processing times and adjust batch sizes accordingly
+    - Split very large jobs into multiple batches
+  </Accordion>
+  
+  <Accordion title="Error Handling">
+    - Always check the `error_file_id` after batch completion
+    - Implement retry logic for failed requests
+    - Use the `custom_id` field to track individual requests
+  </Accordion>
+  
+  <Accordion title="Cost Optimization">
+    - Batch API typically offers 50% cost savings compared to real-time API
+    - Use batches for non-time-sensitive workloads
+    - Combine similar requests to maximize efficiency
+  </Accordion>
+</AccordionGroup>
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Retrieve Batch" icon="search" href="/api/batches/retrieve">
+    Check batch status and results
+  </Card>
+  <Card title="Cancel Batch" icon="xmark" href="/api/batches/cancel">
+    Cancel a running batch
+  </Card>
+  <Card title="List Batches" icon="list" href="/api/batches/list">
+    View all batches
+  </Card>
+</CardGroup>

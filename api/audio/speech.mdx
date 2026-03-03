@@ -1,0 +1,329 @@
+---
+title: 'Create Speech'
+description: 'POST /v1/audio/speech - Convert text to speech'
+---
+
+## Endpoint
+
+```
+POST /v1/audio/speech
+```
+
+Generates audio from text input using text-to-speech models.
+
+## Request
+
+### Headers
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`
+</ParamField>
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The AI provider to use (e.g., `openai`)
+</ParamField>
+
+<ParamField header="x-portkey-api-key" type="string" required>
+  Your API key for the specified provider
+</ParamField>
+
+### Body Parameters
+
+<ParamField body="model" type="string" required>
+  The TTS model to use (e.g., `tts-1`, `tts-1-hd`)
+</ParamField>
+
+<ParamField body="input" type="string" required>
+  The text to convert to speech. Maximum length is 4096 characters.
+</ParamField>
+
+<ParamField body="voice" type="string" required>
+  The voice to use for speech generation. Available voices: `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`
+</ParamField>
+
+<ParamField body="response_format" type="string" default="mp3">
+  The audio format. Options: `mp3`, `opus`, `aac`, `flac`, `wav`, `pcm`
+</ParamField>
+
+<ParamField body="speed" type="number" default={1.0}>
+  Playback speed (0.25 to 4.0)
+</ParamField>
+
+## Response
+
+Returns the audio file content as a binary stream.
+
+<ResponseField name="Content-Type" type="header">
+  The MIME type of the audio file (e.g., `audio/mpeg` for MP3)
+</ResponseField>
+
+## Examples
+
+### Basic Text-to-Speech
+
+```bash
+curl http://localhost:8787/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "model": "tts-1",
+    "input": "Hello! This is a test of text to speech.",
+    "voice": "alloy"
+  }' \
+  --output speech.mp3
+```
+
+### Python SDK
+
+```python
+from portkey_ai import Portkey
+from pathlib import Path
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.audio.speech.create(
+    model="tts-1",
+    voice="alloy",
+    input="Hello! This is a test of text to speech."
+)
+
+# Save to file
+response.stream_to_file("speech.mp3")
+print("Audio saved to speech.mp3")
+```
+
+### JavaScript SDK
+
+```javascript
+import Portkey from 'portkey-ai';
+import fs from 'fs';
+
+const client = new Portkey({
+  provider: 'openai',
+  Authorization: 'sk-...'
+});
+
+const mp3 = await client.audio.speech.create({
+  model: 'tts-1',
+  voice: 'alloy',
+  input: 'Hello! This is a test of text to speech.'
+});
+
+const buffer = Buffer.from(await mp3.arrayBuffer());
+fs.writeFileSync('speech.mp3', buffer);
+console.log('Audio saved to speech.mp3');
+```
+
+### High Definition Audio
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.audio.speech.create(
+    model="tts-1-hd",  # High definition model
+    voice="nova",
+    input="The quick brown fox jumps over the lazy dog."
+)
+
+response.stream_to_file("speech_hd.mp3")
+```
+
+### Different Voice Options
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+text = "Hello, I am demonstrating different voice options."
+
+for voice in voices:
+    response = client.audio.speech.create(
+        model="tts-1",
+        voice=voice,
+        input=text
+    )
+    response.stream_to_file(f"speech_{voice}.mp3")
+    print(f"Generated: speech_{voice}.mp3")
+```
+
+### Different Audio Formats
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+formats = {
+    "mp3": "audio/mpeg",
+    "opus": "audio/opus",
+    "aac": "audio/aac",
+    "flac": "audio/flac"
+}
+
+text = "Testing different audio formats."
+
+for format_name in formats.keys():
+    response = client.audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input=text,
+        response_format=format_name
+    )
+    response.stream_to_file(f"speech.{format_name}")
+    print(f"Generated: speech.{format_name}")
+```
+
+### Adjust Speech Speed
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+text = "This demonstrates different playback speeds."
+
+# Slow (0.5x)
+response = client.audio.speech.create(
+    model="tts-1",
+    voice="alloy",
+    input=text,
+    speed=0.5
+)
+response.stream_to_file("speech_slow.mp3")
+
+# Normal (1.0x)
+response = client.audio.speech.create(
+    model="tts-1",
+    voice="alloy",
+    input=text,
+    speed=1.0
+)
+response.stream_to_file("speech_normal.mp3")
+
+# Fast (2.0x)
+response = client.audio.speech.create(
+    model="tts-1",
+    voice="alloy",
+    input=text,
+    speed=2.0
+)
+response.stream_to_file("speech_fast.mp3")
+```
+
+### Streaming Audio
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.audio.speech.create(
+    model="tts-1",
+    voice="alloy",
+    input="This is streaming audio output."
+)
+
+# Stream to file
+with open("speech_stream.mp3", "wb") as f:
+    for chunk in response.iter_bytes(chunk_size=4096):
+        f.write(chunk)
+```
+
+### Long Text Example
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+long_text = """
+The Portkey AI Gateway is a blazing fast API gateway that routes requests 
+to over 250 language models. It provides a unified interface for accessing 
+multiple AI providers with features like fallbacks, load balancing, 
+and automatic retries. The gateway is designed for high performance and 
+reliability, making it ideal for production AI applications.
+"""
+
+response = client.audio.speech.create(
+    model="tts-1-hd",
+    voice="nova",
+    input=long_text
+)
+
+response.stream_to_file("long_speech.mp3")
+```
+
+## Voice Characteristics
+
+- **alloy**: Neutral and balanced, good for general use
+- **echo**: Clear and articulate, professional tone
+- **fable**: Warm and expressive, storytelling quality
+- **onyx**: Deep and authoritative, formal tone
+- **nova**: Friendly and energetic, engaging quality
+- **shimmer**: Bright and cheerful, conversational tone
+
+## Model Comparison
+
+### tts-1 (Standard)
+- Lower latency
+- Good quality
+- Suitable for real-time applications
+- More cost-effective
+
+### tts-1-hd (High Definition)
+- Higher quality audio
+- More natural-sounding
+- Slightly higher latency
+- Better for pre-recorded content
+
+## Audio Format Specifications
+
+- **mp3**: Most compatible, good compression (default)
+- **opus**: Best for internet streaming, low latency
+- **aac**: Good quality-to-size ratio
+- **flac**: Lossless compression, larger files
+- **wav**: Uncompressed, largest files
+- **pcm**: Raw audio data
+
+## Best Practices
+
+1. **Choose the Right Model**: Use `tts-1` for real-time, `tts-1-hd` for quality
+2. **Text Length**: Keep under 4096 characters per request
+3. **Voice Selection**: Test different voices for your use case
+4. **Format Selection**: Use MP3 for general use, OPUS for streaming
+5. **Speed Adjustment**: Use 0.9-1.1 for natural variations
+
+## Use Cases
+
+- **Accessibility**: Convert text content to audio for visually impaired users
+- **Content Creation**: Generate voiceovers for videos and presentations
+- **E-learning**: Create audio versions of educational content
+- **Audiobooks**: Convert written content to audio format
+- **Voice Assistants**: Generate spoken responses for AI assistants
+- **Notifications**: Create audio alerts and announcements

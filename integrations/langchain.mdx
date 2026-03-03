@@ -1,0 +1,389 @@
+---
+title: "LangChain Integration"
+description: "Use Portkey AI Gateway with LangChain for production-ready LLM applications"
+---
+
+Integrate Portkey with LangChain to access 250+ LLMs while leveraging LangChain's powerful abstractions and Portkey's production-grade routing capabilities.
+
+## Overview
+
+Portkey brings production readiness to LangChain applications:
+
+- Connect to 250+ models through a unified API
+- View 42+ metrics & logs for all requests
+- Enable semantic cache to reduce latency & costs
+- Implement automatic retries & fallbacks
+- Add custom tags for better tracking and analysis
+
+## Installation
+
+<CodeGroup>
+```bash Python
+pip install portkey-ai langchain-openai
+```
+
+```bash JavaScript
+npm install portkey-ai langchain
+```
+</CodeGroup>
+
+## Quick Start
+
+Since Portkey is fully compatible with the OpenAI signature, you can connect through LangChain's `ChatOpenAI` interface.
+
+<Steps>
+  <Step title="Get Your API Keys">
+    Sign up at [Portkey](https://app.portkey.ai/) and get your API key. Add your LLM provider API key as a Virtual Key in Portkey.
+  </Step>
+  
+  <Step title="Configure ChatOpenAI">
+    Set the `base_url` to Portkey's gateway and add Portkey headers:
+    
+    ```python
+    from langchain_openai import ChatOpenAI
+    from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+    
+    portkey_headers = createHeaders(
+        api_key="your-portkey-api-key",
+        provider="openai"
+    )
+    
+    llm = ChatOpenAI(
+        api_key="your-openai-api-key",
+        base_url=PORTKEY_GATEWAY_URL,
+        default_headers=portkey_headers
+    )
+    ```
+  </Step>
+  
+  <Step title="Use LangChain Normally">
+    ```python
+    response = llm.invoke("What is the meaning of life?")
+    print(response.content)
+    ```
+  </Step>
+</Steps>
+
+## Switching Providers
+
+One of Portkey's key benefits is easy provider switching. Change providers with just 2 lines:
+
+<CodeGroup>
+```python OpenAI
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = ChatOpenAI(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+```python Anthropic
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="anthropic"
+)
+
+llm = ChatOpenAI(
+    model="claude-3-opus-20240229",
+    api_key="your-anthropic-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+```python Google Gemini
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="google"
+)
+
+llm = ChatOpenAI(
+    model="gemini-1.5-pro",
+    api_key="your-google-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+```python Together AI
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="together-ai"
+)
+
+llm = ChatOpenAI(
+    model="meta-llama/Llama-3-70b-chat-hf",
+    api_key="your-together-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+</CodeGroup>
+
+## Advanced Routing
+
+Use Portkey's gateway configs for load balancing, fallbacks, and retries.
+
+### Load Balancing
+
+Distribute traffic between multiple models or providers:
+
+```python
+config = {
+    "strategy": {
+        "mode": "loadbalance"
+    },
+    "targets": [
+        {
+            "virtual_key": "openai-virtual-key",
+            "override_params": {"model": "gpt-3.5-turbo"},
+            "weight": 0.5
+        },
+        {
+            "virtual_key": "together-virtual-key",
+            "override_params": {"model": "meta-llama/Llama-3-8b-chat-hf"},
+            "weight": 0.5
+        }
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+
+llm = ChatOpenAI(
+    api_key="X",  # Not used when config has virtual keys
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+### Fallback Strategy
+
+Automatically fallback to another provider on failures:
+
+```python
+config = {
+    "strategy": {
+        "mode": "fallback"
+    },
+    "targets": [
+        {"virtual_key": "openai-virtual-key"},
+        {"virtual_key": "anthropic-virtual-key"}
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+```
+
+### Automatic Retries
+
+```python
+config = {
+    "retry": {
+        "attempts": 5,
+        "on_status_codes": [429, 500, 502, 503]
+    }
+}
+```
+
+## LangChain Chains and Agents
+
+Portkey works seamlessly with LangChain chains and agents:
+
+```python
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Configure LLM with Portkey
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = ChatOpenAI(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Create a chain
+prompt = PromptTemplate(
+    input_variables=["product"],
+    template="What is a good name for a company that makes {product}?"
+)
+
+chain = LLMChain(llm=llm, prompt=prompt)
+result = chain.run("eco-friendly water bottles")
+print(result)
+```
+
+## Adding Metadata and Tracing
+
+Enhance observability with metadata and custom traces:
+
+```python
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={
+        "user_id": "user_123",
+        "environment": "production",
+        "session_id": "session_456"
+    },
+    trace_id="custom-trace-id"
+)
+
+llm = ChatOpenAI(
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+## Caching
+
+Enable semantic caching to reduce costs and latency:
+
+```python
+config = {
+    "cache": {
+        "mode": "semantic",
+        "max_age": 3600  # Cache for 1 hour
+    }
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    config=config
+)
+```
+
+## Streaming
+
+Portkey supports streaming responses:
+
+```python
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+
+llm = ChatOpenAI(
+    model="gpt-4",
+    streaming=True,
+    callbacks=[StreamingStdOutCallbackHandler()],
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+response = llm.invoke("Tell me a story")
+```
+
+## Monitoring and Analytics
+
+All requests through Portkey are automatically logged. View detailed analytics in the [Portkey dashboard](https://app.portkey.ai/):
+
+- Request/response logs
+- Token usage and costs
+- Latency metrics
+- Error rates
+- Custom metadata filters
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Virtual Keys">
+    Store your provider API keys as Virtual Keys in Portkey for better security and key rotation.
+  </Accordion>
+  
+  <Accordion title="Implement Fallbacks">
+    Always configure fallback providers for production applications to handle outages.
+  </Accordion>
+  
+  <Accordion title="Enable Caching">
+    Use semantic caching for FAQ and support use cases to reduce costs by up to 50%.
+  </Accordion>
+  
+  <Accordion title="Add Metadata">
+    Tag requests with user IDs, session IDs, and environment info for better debugging.
+  </Accordion>
+</AccordionGroup>
+
+## Example: Complete RAG Application
+
+```python
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain.chains import RetrievalQA
+from langchain.vectorstores import Chroma
+from langchain.document_loaders import TextLoader
+from langchain.text_splitter import CharacterTextSplitter
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Configure Portkey headers
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={"application": "rag-demo"}
+)
+
+# Load and split documents
+loader = TextLoader("data.txt")
+documents = loader.load()
+text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+texts = text_splitter.split_documents(documents)
+
+# Create embeddings with Portkey
+embeddings = OpenAIEmbeddings(
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Create vector store
+vectorstore = Chroma.from_documents(texts, embeddings)
+
+# Create LLM with Portkey
+llm = ChatOpenAI(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Create QA chain
+qa = RetrievalQA.from_chain_type(
+    llm=llm,
+    chain_type="stuff",
+    retriever=vectorstore.as_retriever()
+)
+
+# Query
+result = qa.run("What is the main topic of the document?")
+print(result)
+```
+
+## Resources
+
+- [LangChain Documentation](https://python.langchain.com/docs/get_started/introduction)
+- [Portkey Gateway Configs](/concepts/configs)
+- [Virtual Keys Setup](https://portkey.ai/docs)
+- [Example Notebook](https://github.com/Portkey-AI/gateway/tree/main/cookbook/integrations)
+
+<Note>
+  Questions? Join our [Discord community](https://discord.gg/portkey) or reach out to support.
+</Note>

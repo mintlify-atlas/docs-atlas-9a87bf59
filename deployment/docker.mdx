@@ -1,0 +1,295 @@
+---
+title: Docker Deployment
+description: Deploy Portkey AI Gateway using Docker or Docker Compose
+---
+
+The Portkey AI Gateway provides official Docker images for easy deployment. Run a single container with Docker or orchestrate multiple services with Docker Compose.
+
+## Docker Hub Image
+
+The official Docker image is available at [`portkeyai/gateway`](https://hub.docker.com/r/portkeyai/gateway) on Docker Hub.
+
+## Quick Start with Docker
+
+Run the latest version of the gateway with a single command:
+
+```bash
+docker run --rm -p 8787:8787 portkeyai/gateway:latest
+```
+
+The gateway will be available at `http://localhost:8787`.
+
+### Docker Run Options
+
+<Steps>
+  <Step title="Run in detached mode">
+    Run the container in the background:
+    ```bash
+    docker run -d -p 8787:8787 --name portkey-gateway portkeyai/gateway:latest
+    ```
+  </Step>
+  
+  <Step title="Mount configuration">
+    Mount a custom configuration file:
+    ```bash
+    docker run -d -p 8787:8787 \
+      -v $(pwd)/conf.json:/app/conf.json \
+      portkeyai/gateway:latest
+    ```
+  </Step>
+  
+  <Step title="Set environment variables">
+    Pass environment variables to configure the gateway:
+    ```bash
+    docker run -d -p 8787:8787 \
+      -e LOG_LEVEL=debug \
+      portkeyai/gateway:latest
+    ```
+  </Step>
+</Steps>
+
+## Docker Compose
+
+For production deployments, Docker Compose provides a more maintainable approach.
+
+### Download Compose File
+
+<Steps>
+  <Step title="Download the compose file">
+    Download the official Docker Compose configuration:
+    ```bash
+    wget "https://raw.githubusercontent.com/Portkey-AI/gateway/main/docker-compose.yaml"
+    ```
+  </Step>
+  
+  <Step title="Start the services">
+    Launch the gateway:
+    ```bash
+    docker compose up -d
+    ```
+  </Step>
+  
+  <Step title="Verify deployment">
+    Check that the service is running:
+    ```bash
+    docker compose ps
+    ```
+  </Step>
+</Steps>
+
+### Docker Compose Configuration
+
+Here's the complete `docker-compose.yaml` file:
+
+```yaml docker-compose.yaml
+version: '3'
+services:
+  web:
+    ports:
+      - "8787:8787"
+    image: "portkeyai/gateway:latest"
+    restart: always
+```
+
+### Customize Docker Compose
+
+Extend the configuration for your needs:
+
+<CodeGroup>
+```yaml Add volumes
+version: '3'
+services:
+  web:
+    ports:
+      - "8787:8787"
+    image: "portkeyai/gateway:latest"
+    restart: always
+    volumes:
+      - ./conf.json:/app/conf.json
+      - ./logs:/app/logs
+```
+
+```yaml Add environment variables
+version: '3'
+services:
+  web:
+    ports:
+      - "8787:8787"
+    image: "portkeyai/gateway:latest"
+    restart: always
+    environment:
+      - LOG_LEVEL=info
+      - NODE_ENV=production
+```
+
+```yaml Multiple replicas
+version: '3'
+services:
+  web:
+    ports:
+      - "8787:8787"
+    image: "portkeyai/gateway:latest"
+    restart: always
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+```
+</CodeGroup>
+
+## Build from Source
+
+You can also build the Docker image from source.
+
+### Dockerfile
+
+The gateway uses a multi-stage build for optimal image size:
+
+```dockerfile Dockerfile
+# Use the official Node.js runtime as a parent image
+FROM node:20-alpine AS build
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy package.json and package-lock.json to the working directory
+COPY package*.json ./
+COPY patches ./
+
+# Upgrade system packages
+RUN apk upgrade --no-cache
+
+# Upgrade npm to version 10.9.2
+RUN npm install -g npm@10.9.2
+
+# Install app dependencies
+RUN npm install
+
+# Copy the rest of the application code
+COPY . .
+
+# Build the application and clean up
+RUN npm run build \
+&& rm -rf node_modules \
+&& npm install --omit=dev
+
+# Use the official Node.js runtime as a parent image
+FROM node:20-alpine
+
+# Upgrade system packages
+RUN apk upgrade --no-cache
+
+# Upgrade npm to version 10.9.2
+RUN npm install -g npm@10.9.2
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the build directory, node_modules, and package.json to the working directory
+COPY --from=build /app/build /app/build
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/package.json /app/package.json
+COPY --from=build /app/patches /app/patches
+
+# Expose port 8787
+EXPOSE 8787
+
+ENTRYPOINT ["npm"]
+CMD ["run", "start:node"]
+```
+
+### Build Steps
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/portkey-ai/gateway
+    cd gateway
+    ```
+  </Step>
+  
+  <Step title="Build the image">
+    ```bash
+    docker build -t portkey-gateway:custom .
+    ```
+  </Step>
+  
+  <Step title="Run your custom image">
+    ```bash
+    docker run -p 8787:8787 portkey-gateway:custom
+    ```
+  </Step>
+</Steps>
+
+## Docker Management
+
+### View Logs
+
+```bash
+# Follow logs
+docker logs -f portkey-gateway
+
+# With Docker Compose
+docker compose logs -f
+```
+
+### Stop and Remove
+
+```bash
+# Stop container
+docker stop portkey-gateway
+
+# Remove container
+docker rm portkey-gateway
+
+# With Docker Compose
+docker compose down
+```
+
+### Update to Latest Version
+
+```bash
+# Pull latest image
+docker pull portkeyai/gateway:latest
+
+# Restart container
+docker restart portkey-gateway
+
+# With Docker Compose
+docker compose pull
+docker compose up -d
+```
+
+## Health Checks
+
+Add health checks to your Docker deployment:
+
+```yaml docker-compose.yaml
+version: '3'
+services:
+  web:
+    ports:
+      - "8787:8787"
+    image: "portkeyai/gateway:latest"
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8787/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Kubernetes" icon="kubernetes" href="/deployment/kubernetes">
+    Scale your deployment with Kubernetes
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Configure the gateway for your needs
+  </Card>
+</CardGroup>

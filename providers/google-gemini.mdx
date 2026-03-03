@@ -1,0 +1,440 @@
+---
+title: 'Google Gemini'
+description: 'Integrate Google Gemini models including Gemini 2.0 Flash, Gemini 1.5 Pro, and Gemini 1.5 Flash'
+---
+
+## Overview
+
+Google Gemini is Google's most capable AI model family, offering multimodal capabilities including text, vision, audio, and code. Access Gemini through Portkey for advanced reasoning, long context understanding, and function calling.
+
+**Base URL:** `https://generativelanguage.googleapis.com`
+
+## Supported Features
+
+- ✅ Chat Completions (including streaming)
+- ✅ Embeddings
+- ✅ Function Calling
+- ✅ Vision (Image and Video inputs)
+- ✅ Audio Understanding
+- ✅ Long Context (up to 2M tokens)
+- ✅ JSON Mode
+- ✅ System Instructions
+- ❌ Image Generation (use Vertex AI)
+- ❌ Fine-tuning (use Vertex AI)
+
+## Quick Start
+
+### Chat Completions
+
+<CodeGroup>
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="google",
+    api_key="***"  # Your Google AI Studio API key
+)
+
+response = client.chat.completions.create(
+    model="gemini-2.0-flash-exp",
+    messages=[
+        {"role": "user", "content": "Explain how Gemini differs from other AI models"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "google",
+    apiKey: "***"  // Your Google AI Studio API key
+});
+
+const response = await client.chat.completions.create({
+    model: "gemini-2.0-flash-exp",
+    messages: [
+        {role: "user", content: "Explain how Gemini differs from other AI models"}
+    ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: google" \
+  -H "x-portkey-api-key: ***" \
+  -d '{
+    "model": "gemini-2.0-flash-exp",
+    "messages": [
+      {"role": "user", "content": "Explain how Gemini differs from other AI models"}
+    ]
+  }'
+```
+</CodeGroup>
+
+### Streaming
+
+```python
+stream = client.chat.completions.create(
+    model="gemini-2.0-flash-exp",
+    messages=[{"role": "user", "content": "Write a poem about AI"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+## Available Models
+
+### Gemini 2.0 (Latest)
+
+| Model | Context Window | Description | Best For |
+|-------|----------------|-------------|----------|
+| `gemini-2.0-flash-exp` | 1M tokens | Latest experimental Gemini 2.0 | General purpose, fast |
+| `gemini-2.0-flash-thinking-exp` | 32K tokens | Reasoning model (experimental) | Complex problem solving |
+
+### Gemini 1.5
+
+| Model | Context Window | Description | Best For |
+|-------|----------------|-------------|----------|
+| `gemini-1.5-pro` | 2M tokens | Most capable Gemini 1.5 | Complex tasks, long context |
+| `gemini-1.5-flash` | 1M tokens | Fast, efficient model | High-throughput applications |
+| `gemini-1.5-flash-8b` | 1M tokens | Smallest, fastest | Cost-effective tasks |
+
+### Embeddings
+
+| Model | Dimensions | Description |
+|-------|-----------|-------------|
+| `text-embedding-004` | 768 | Latest embedding model |
+| `text-multilingual-embedding-002` | 768 | Multilingual support |
+
+<Note>
+  Gemini models excel at:
+  - **Long context understanding** (up to 2M tokens)
+  - **Multimodal reasoning** (text, images, video, audio)
+  - **Code generation** and analysis
+  - **Multilingual** capabilities
+</Note>
+
+## Configuration Options
+
+### Getting Your API Key
+
+1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Click **Get API Key**
+3. Create or select a project
+4. Copy your API key
+
+```python
+client = Portkey(
+    provider="google",
+    api_key="AIza***"  # Your Google AI Studio API key
+)
+```
+
+## Advanced Features
+
+### Vision (Image Understanding)
+
+```python
+response = client.chat.completions.create(
+    model="gemini-2.0-flash-exp",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What's in this image?"},
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": "https://example.com/image.jpg"
+                }
+            }
+        ]
+    }]
+)
+```
+
+Base64 images:
+
+```python
+import base64
+
+with open("image.jpg", "rb") as f:
+    image_data = base64.b64encode(f.read()).decode()
+
+response = client.chat.completions.create(
+    model="gemini-2.0-flash-exp",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "Describe this image"},
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}
+            }
+        ]
+    }]
+)
+```
+
+### Function Calling
+
+```python
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_web",
+            "description": "Search the web for information",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model="gemini-2.0-flash-exp",
+    messages=[{"role": "user", "content": "Search for the latest AI news"}],
+    tools=tools
+)
+
+if response.choices[0].message.tool_calls:
+    tool_call = response.choices[0].message.tool_calls[0]
+    print(f"Function: {tool_call.function.name}")
+    print(f"Arguments: {tool_call.function.arguments}")
+```
+
+### System Instructions
+
+```python
+response = client.chat.completions.create(
+    model="gemini-2.0-flash-exp",
+    messages=[
+        {
+            "role": "system",
+            "content": "You are a helpful Python programming expert. Always provide working code examples."
+        },
+        {
+            "role": "user",
+            "content": "How do I read a JSON file?"
+        }
+    ]
+)
+```
+
+### Long Context Processing
+
+Gemini excels at processing very long documents:
+
+```python
+# Process a very long document (up to 2M tokens with Gemini 1.5 Pro)
+long_document = """[Your very long document here - up to 2 million tokens]"""
+
+response = client.chat.completions.create(
+    model="gemini-1.5-pro",
+    messages=[
+        {"role": "user", "content": f"Summarize this document:\n\n{long_document}"}
+    ]
+)
+```
+
+### JSON Mode
+
+```python
+response = client.chat.completions.create(
+    model="gemini-2.0-flash-exp",
+    messages=[{
+        "role": "user",
+        "content": "List 3 colors with their hex codes"
+    }],
+    response_format={"type": "json_object"}
+)
+
+import json
+result = json.loads(response.choices[0].message.content)
+print(result)
+```
+
+### Embeddings
+
+```python
+response = client.embeddings.create(
+    model="text-embedding-004",
+    input="Gemini is Google's most capable AI model"
+)
+
+embedding = response.data[0].embedding
+print(f"Embedding dimension: {len(embedding)}")
+```
+
+Batch embeddings:
+
+```python
+response = client.embeddings.create(
+    model="text-embedding-004",
+    input=[
+        "First document to embed",
+        "Second document to embed",
+        "Third document to embed"
+    ]
+)
+
+for i, item in enumerate(response.data):
+    print(f"Document {i}: {len(item.embedding)} dimensions")
+```
+
+## Fallback Configuration
+
+Fallback to GPT-4 if Gemini fails:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {
+            "provider": "google",
+            "api_key": "AIza***",
+            "override_params": {"model": "gemini-2.0-flash-exp"}
+        },
+        {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "override_params": {"model": "gpt-4o"}
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Load Balancing
+
+Balance between different Gemini models:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "provider": "google",
+            "api_key": "AIza***",
+            "override_params": {"model": "gemini-1.5-pro"},
+            "weight": 0.3
+        },
+        {
+            "provider": "google",
+            "api_key": "AIza***",
+            "override_params": {"model": "gemini-1.5-flash"},
+            "weight": 0.7
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Error Handling
+
+```python
+from portkey_ai.exceptions import (
+    RateLimitError,
+    APIError,
+    AuthenticationError
+)
+
+try:
+    response = client.chat.completions.create(
+        model="gemini-2.0-flash-exp",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+except RateLimitError as e:
+    print(f"Rate limit: {e}")
+except AuthenticationError as e:
+    print(f"Invalid API key: {e}")
+except APIError as e:
+    print(f"API error: {e}")
+```
+
+## Key Features
+
+### Context Windows
+
+| Model | Context Window | Notes |
+|-------|----------------|--------|
+| gemini-1.5-pro | 2,097,152 tokens | Largest available |
+| gemini-1.5-flash | 1,048,576 tokens | Fast processing |
+| gemini-2.0-flash-exp | 1,048,576 tokens | Latest generation |
+| gemini-2.0-flash-thinking-exp | 32,768 tokens | Reasoning focused |
+
+### Safety Settings
+
+Gemini includes built-in safety filters. Responses may be blocked if content violates safety thresholds.
+
+### Rate Limits
+
+- Free tier: 15 requests per minute
+- Pay-as-you-go: Higher limits based on usage
+
+## Best Practices
+
+1. **Use Flash for speed** - Gemini Flash is significantly faster
+2. **Leverage long context** - Process entire documents in one request
+3. **Multimodal inputs** - Combine text, images, and more
+4. **System instructions** - Guide behavior with clear instructions
+5. **Handle safety blocks** - Implement fallbacks for blocked responses
+6. **Use embeddings** - text-embedding-004 for semantic search
+7. **Stream responses** - Better UX for long generations
+
+## Gemini vs Vertex AI
+
+| Feature | Google AI (Gemini) | Vertex AI |
+|---------|-------------------|------------|
+| Access | Google AI Studio API key | GCP Service Account |
+| Pricing | Pay-per-request | Enterprise pricing |
+| Features | Core features | Additional enterprise features |
+| Authentication | API key | OAuth 2.0, Service Accounts |
+| Use Case | Development, small apps | Production, enterprise |
+
+<Info>
+  For enterprise deployments, consider using [Google Vertex AI](/providers/google-vertex-ai) which offers additional features like fine-tuning, private endpoints, and SLA.
+</Info>
+
+## Pricing
+
+Gemini offers competitive pricing with a free tier:
+
+<Card title="Gemini Pricing" icon="dollar-sign" href="https://portkey.ai/models?provider=google">
+  View detailed pricing for all Gemini models
+</Card>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Google Vertex AI" icon="google" href="/providers/google-vertex-ai">
+    Enterprise Gemini through GCP
+  </Card>
+  <Card title="Function Calling" icon="function" href="/essentials/function-calling">
+    Advanced function calling
+  </Card>
+  <Card title="Vision Guide" icon="image" href="/essentials/vision">
+    Working with images
+  </Card>
+  <Card title="Fallbacks" icon="arrows-rotate" href="/essentials/fallbacks">
+    Fallback configurations
+  </Card>
+</CardGroup>

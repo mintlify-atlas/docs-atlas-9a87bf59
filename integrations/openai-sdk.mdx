@@ -1,0 +1,724 @@
+---
+title: "OpenAI SDK Integration"
+description: "Use Portkey AI Gateway as a drop-in replacement for OpenAI SDK"
+---
+
+Portkey works seamlessly as a drop-in replacement for the OpenAI SDK, requiring minimal code changes while adding production-grade routing, fallbacks, and observability.
+
+## Overview
+
+Using Portkey with OpenAI SDK gives you:
+
+- **Zero Code Changes**: Works with existing OpenAI SDK code
+- **250+ LLMs**: Route to any provider using OpenAI's interface
+- **Production Ready**: Automatic fallbacks, retries, and load balancing
+- **Observability**: Complete logging and analytics
+- **Cost Optimization**: Smart caching and provider switching
+
+## Installation
+
+<CodeGroup>
+```bash Python
+pip install openai portkey-ai
+```
+
+```bash JavaScript
+npm install openai portkey-ai
+```
+</CodeGroup>
+
+## Python Integration
+
+### Quick Start
+
+<Steps>
+  <Step title="Import Libraries">
+    ```python
+    from openai import OpenAI
+    from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+    ```
+  </Step>
+  
+  <Step title="Create Portkey Headers">
+    ```python
+    portkey_headers = createHeaders(
+        api_key="your-portkey-api-key",
+        provider="openai"
+    )
+    ```
+  </Step>
+  
+  <Step title="Initialize OpenAI Client">
+    ```python
+    client = OpenAI(
+        api_key="your-openai-api-key",
+        base_url=PORTKEY_GATEWAY_URL,
+        default_headers=portkey_headers
+    )
+    ```
+  </Step>
+  
+  <Step title="Use OpenAI SDK Normally">
+    ```python
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    
+    print(response.choices[0].message.content)
+    ```
+  </Step>
+</Steps>
+
+### Complete Example (Python)
+
+```python
+from openai import OpenAI
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+# Configure Portkey
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={
+        "environment": "production",
+        "user_id": "user_123"
+    }
+)
+
+# Create OpenAI client with Portkey
+client = OpenAI(
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Use all OpenAI SDK features
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Explain quantum computing simply."}
+    ],
+    temperature=0.7,
+    max_tokens=500
+)
+
+print(response.choices[0].message.content)
+```
+
+### Streaming (Python)
+
+```python
+from openai import OpenAI
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+client = OpenAI(
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+stream = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Write a story"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+```
+
+### Async Support (Python)
+
+```python
+import asyncio
+from openai import AsyncOpenAI
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+async def main():
+    client = AsyncOpenAI(
+        api_key="your-openai-api-key",
+        base_url=PORTKEY_GATEWAY_URL,
+        default_headers=portkey_headers
+    )
+    
+    response = await client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    
+    print(response.choices[0].message.content)
+
+asyncio.run(main())
+```
+
+## JavaScript Integration
+
+### Quick Start (JavaScript)
+
+<Steps>
+  <Step title="Import Libraries">
+    ```typescript
+    import OpenAI from 'openai';
+    import { PORTKEY_GATEWAY_URL, createHeaders } from 'portkey-ai';
+    ```
+  </Step>
+  
+  <Step title="Create Portkey Headers">
+    ```typescript
+    const portkeyHeaders = createHeaders({
+        apiKey: "your-portkey-api-key",
+        provider: "openai"
+    });
+    ```
+  </Step>
+  
+  <Step title="Initialize OpenAI Client">
+    ```typescript
+    const client = new OpenAI({
+        apiKey: "your-openai-api-key",
+        baseURL: PORTKEY_GATEWAY_URL,
+        defaultHeaders: portkeyHeaders
+    });
+    ```
+  </Step>
+  
+  <Step title="Use OpenAI SDK Normally">
+    ```typescript
+    const response = await client.chat.completions.create({
+        model: "gpt-4",
+        messages: [{role: "user", content: "Hello!"}]
+    });
+    
+    console.log(response.choices[0].message.content);
+    ```
+  </Step>
+</Steps>
+
+### Complete Example (JavaScript)
+
+```typescript
+import OpenAI from 'openai';
+import { PORTKEY_GATEWAY_URL, createHeaders } from 'portkey-ai';
+
+// Configure Portkey
+const portkeyHeaders = createHeaders({
+    apiKey: "your-portkey-api-key",
+    provider: "openai",
+    metadata: {
+        environment: "production",
+        userId: "user_123"
+    }
+});
+
+// Create OpenAI client with Portkey
+const client = new OpenAI({
+    apiKey: "your-openai-api-key",
+    baseURL: PORTKEY_GATEWAY_URL,
+    defaultHeaders: portkeyHeaders
+});
+
+// Use all OpenAI SDK features
+const response = await client.chat.completions.create({
+    model: "gpt-4",
+    messages: [
+        {role: "system", content: "You are a helpful assistant."},
+        {role: "user", content: "Explain quantum computing simply."}
+    ],
+    temperature: 0.7,
+    maxTokens: 500
+});
+
+console.log(response.choices[0].message.content);
+```
+
+### Streaming (JavaScript)
+
+```typescript
+import OpenAI from 'openai';
+import { PORTKEY_GATEWAY_URL, createHeaders } from 'portkey-ai';
+
+const portkeyHeaders = createHeaders({
+    apiKey: "your-portkey-api-key",
+    provider: "openai"
+});
+
+const client = new OpenAI({
+    apiKey: "your-openai-api-key",
+    baseURL: PORTKEY_GATEWAY_URL,
+    defaultHeaders: portkeyHeaders
+});
+
+const stream = await client.chat.completions.create({
+    model: "gpt-4",
+    messages: [{role: "user", content: "Write a story"}],
+    stream: true
+});
+
+for await (const chunk of stream) {
+    if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content);
+    }
+}
+```
+
+## Switching Providers
+
+The beauty of using Portkey with OpenAI SDK is you can easily switch to any provider:
+
+<CodeGroup>
+```python Anthropic
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="anthropic"
+)
+
+client = OpenAI(
+    api_key="your-anthropic-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Use Claude with OpenAI SDK interface!
+response = client.chat.completions.create(
+    model="claude-3-opus-20240229",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+```python Google Gemini
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="google"
+)
+
+client = OpenAI(
+    api_key="your-google-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Use Gemini with OpenAI SDK interface!
+response = client.chat.completions.create(
+    model="gemini-1.5-pro",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+```python Llama via Together
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="together-ai"
+)
+
+client = OpenAI(
+    api_key="your-together-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Use Llama with OpenAI SDK interface!
+response = client.chat.completions.create(
+    model="meta-llama/Llama-3-70b-chat-hf",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+</CodeGroup>
+
+## Advanced Routing
+
+### Fallback Configuration
+
+Add automatic fallbacks:
+
+```python
+from openai import OpenAI
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"virtual_key": "openai-virtual-key"},
+        {"virtual_key": "anthropic-virtual-key"},
+        {"virtual_key": "together-virtual-key"}
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+
+client = OpenAI(
+    api_key="X",  # Not used when config has virtual keys
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Automatically falls back if primary fails
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+### Load Balancing
+
+Distribute traffic across multiple accounts:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {"virtual_key": "openai-key-1", "weight": 0.7},
+        {"virtual_key": "openai-key-2", "weight": 0.3}
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+
+client = OpenAI(
+    api_key="X",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+### Retries and Timeouts
+
+```python
+config = {
+    "retry": {
+        "attempts": 5,
+        "on_status_codes": [429, 500, 502, 503]
+    },
+    "request_timeout": 30000  # 30 seconds
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    config=config
+)
+```
+
+## Caching
+
+Enable caching to reduce costs:
+
+```python
+from openai import OpenAI
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+config = {
+    "cache": {
+        "mode": "semantic",
+        "max_age": 3600  # 1 hour
+    }
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    config=config
+)
+
+client = OpenAI(
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Semantically similar queries will be cached
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "What is 2+2?"}]
+)
+```
+
+## All OpenAI Features Supported
+
+### Function Calling
+
+```python
+from openai import OpenAI
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+client = OpenAI(
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get weather for a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string"}
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+    tools=tools,
+    tool_choice="auto"
+)
+```
+
+### Vision
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4-vision-preview",
+    messages=[
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "What's in this image?"},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "https://example.com/image.jpg"}
+                }
+            ]
+        }
+    ],
+    max_tokens=300
+)
+```
+
+### Embeddings
+
+```python
+response = client.embeddings.create(
+    model="text-embedding-3-small",
+    input="The quick brown fox jumps over the lazy dog"
+)
+```
+
+### Image Generation
+
+```python
+response = client.images.generate(
+    model="dall-e-3",
+    prompt="A serene landscape with mountains",
+    n=1,
+    size="1024x1024"
+)
+```
+
+### Audio
+
+```python
+# Speech to Text
+audio_file = open("speech.mp3", "rb")
+response = client.audio.transcriptions.create(
+    model="whisper-1",
+    file=audio_file
+)
+
+# Text to Speech
+response = client.audio.speech.create(
+    model="tts-1",
+    voice="alloy",
+    input="Hello world"
+)
+```
+
+## Observability
+
+Add metadata for better tracking:
+
+```python
+from openai import OpenAI
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={
+        "user_id": "user_123",
+        "session_id": "session_456",
+        "environment": "production",
+        "feature": "chat"
+    },
+    trace_id="request-001"
+)
+
+client = OpenAI(
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+
+# View detailed logs at https://app.portkey.ai/
+```
+
+## Migration Guide
+
+Migrating existing OpenAI code to use Portkey:
+
+### Before (Plain OpenAI)
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="your-openai-api-key"
+)
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+### After (With Portkey)
+
+```python
+from openai import OpenAI
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+client = OpenAI(
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,  # Add this
+    default_headers=portkey_headers  # Add this
+)
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+That's it! Only 2 extra parameters needed.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Virtual Keys">
+    Store your provider API keys as Virtual Keys in Portkey for better security and rotation.
+  </Accordion>
+  
+  <Accordion title="Configure Fallbacks">
+    Always set up fallback providers for production applications:
+    ```python
+    config = {"strategy": {"mode": "fallback"}, "targets": [...]}
+    ```
+  </Accordion>
+  
+  <Accordion title="Enable Caching">
+    Use semantic caching for cost savings on repeated queries:
+    ```python
+    config = {"cache": {"mode": "semantic", "max_age": 3600}}
+    ```
+  </Accordion>
+  
+  <Accordion title="Add Metadata">
+    Always include metadata for better observability:
+    ```python
+    metadata={"user_id": "user_123", "environment": "production"}
+    ```
+  </Accordion>
+  
+  <Accordion title="Monitor in Dashboard">
+    Regularly check the Portkey dashboard for cost optimization opportunities.
+  </Accordion>
+</AccordionGroup>
+
+## Complete Production Example
+
+```python
+from openai import OpenAI
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+import os
+
+# Production-ready configuration
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"virtual_key": "openai-key"},
+        {"virtual_key": "anthropic-key"}
+    ],
+    "retry": {"attempts": 3},
+    "request_timeout": 30000,
+    "cache": {"mode": "semantic", "max_age": 3600}
+}
+
+portkey_headers = createHeaders(
+    api_key=os.environ["PORTKEY_API_KEY"],
+    config=config,
+    metadata={
+        "environment": "production",
+        "service": "customer-support"
+    }
+)
+
+client = OpenAI(
+    api_key="X",  # Not needed with virtual keys
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Your existing OpenAI code works as-is
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "How can I help you today?"}
+    ],
+    temperature=0.7
+)
+
+print(response.choices[0].message.content)
+```
+
+## Resources
+
+- [OpenAI SDK Documentation](https://platform.openai.com/docs/api-reference)
+- [Portkey Gateway Configs](/concepts/configs)
+- [Virtual Keys Setup](https://portkey.ai/docs)
+- [Migration Examples](https://github.com/Portkey-AI/gateway/tree/main/cookbook)
+
+<Note>
+  Using OpenAI SDK with Portkey gives you the best of both worlds: familiar API + production-grade features.
+</Note>

@@ -1,0 +1,440 @@
+---
+title: 'Groq'
+description: 'Access ultra-fast LLM inference with Groq LPU technology - 500+ tokens/second'
+---
+
+## Overview
+
+Groq provides lightning-fast LLM inference using their custom Language Processing Unit (LPU) technology, delivering speeds of 500+ tokens per second. Perfect for applications requiring ultra-low latency responses with popular open-source models.
+
+**Base URL:** `https://api.groq.com/openai/v1`
+
+## Supported Features
+
+- ✅ Chat Completions
+- ✅ Streaming (extremely fast)
+- ✅ Function Calling
+- ✅ Vision (select models)
+- ✅ JSON Mode
+- ❌ Embeddings
+- ❌ Image Generation
+- ❌ Fine-tuning
+
+## Quick Start
+
+### Chat Completions
+
+<CodeGroup>
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="groq",
+    Authorization="***"  # Your Groq API key
+)
+
+response = client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[
+        {"role": "user", "content": "Explain Groq's LPU technology"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "groq",
+    Authorization: "***"  // Your Groq API key
+});
+
+const response = await client.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [
+        {role: "user", content: "Explain Groq's LPU technology"}
+    ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: groq" \
+  -H "Authorization: Bearer ***" \
+  -d '{
+    "model": "llama-3.3-70b-versatile",
+    "messages": [
+      {"role": "user", "content": "Explain Groq technology"}
+    ]
+  }'
+```
+</CodeGroup>
+
+### Ultra-Fast Streaming
+
+```python
+import time
+
+start = time.time()
+stream = client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[{"role": "user", "content": "Count from 1 to 100"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+
+end = time.time()
+print(f"\n\nCompleted in {end - start:.2f} seconds")
+# Often completes in under 2 seconds!
+```
+
+## Available Models
+
+### Meta Llama
+
+| Model | Context | Speed | Description |
+|-------|---------|-------|-------------|
+| `llama-3.3-70b-versatile` | 128K | Ultra-fast | Latest Llama 3.3 |
+| `llama-3.1-70b-versatile` | 128K | Ultra-fast | Llama 3.1 70B |
+| `llama-3.1-8b-instant` | 128K | Instant | Fastest Llama |
+| `llama-3.2-90b-vision-preview` | 128K | Fast | Vision-enabled |
+| `llama-3.2-11b-vision-preview` | 128K | Very fast | Smaller vision |
+
+### Mixtral
+
+| Model | Context | Speed | Description |
+|-------|---------|-------|-------------|
+| `mixtral-8x7b-32768` | 32K | Ultra-fast | Efficient MoE |
+
+### Google Gemma
+
+| Model | Context | Speed | Description |
+|-------|---------|-------|-------------|
+| `gemma2-9b-it` | 8K | Very fast | Gemma 2 9B |
+| `gemma-7b-it` | 8K | Very fast | Gemma 7B |
+
+### Other Models
+
+| Model | Context | Description |
+|-------|---------|-------------|
+| `llama-guard-3-8b` | 8K | Content moderation |
+| `llama3-groq-70b-8192-tool-use-preview` | 8K | Tool use optimized |
+
+<Note>
+  **Groq excels at:**
+  - **Ultra-low latency** - 500+ tokens/second
+  - **Streaming speed** - Nearly instant response start
+  - **Consistent performance** - Predictable latency
+  - **Real-time applications** - Chat, assistants, games
+  - **High throughput** - Handle many concurrent requests
+</Note>
+
+## Configuration Options
+
+```python
+client = Portkey(
+    provider="groq",
+    Authorization="***"  # Bearer token
+)
+```
+
+| Header | Description | Required |
+|--------|-------------|----------|
+| `Authorization` | Groq API key | Yes |
+
+## Advanced Features
+
+### Function Calling
+
+```python
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_time",
+            "description": "Get the current time",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timezone": {
+                        "type": "string",
+                        "description": "Timezone name"
+                    }
+                },
+                "required": ["timezone"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[{"role": "user", "content": "What time is it in Tokyo?"}],
+    tools=tools
+)
+```
+
+### Vision (Multimodal)
+
+```python
+response = client.chat.completions.create(
+    model="llama-3.2-90b-vision-preview",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What's in this image?"},
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": "https://example.com/image.jpg"
+                }
+            }
+        ]
+    }]
+)
+```
+
+### JSON Mode
+
+```python
+response = client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[{
+        "role": "user",
+        "content": "List 5 programming languages with their release years"
+    }],
+    response_format={"type": "json_object"}
+)
+
+import json
+result = json.loads(response.choices[0].message.content)
+print(result)
+```
+
+### Temperature Control
+
+```python
+# More deterministic (good for factual tasks)
+response = client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[{"role": "user", "content": "What is 2+2?"}],
+    temperature=0.0
+)
+
+# More creative
+response = client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[{"role": "user", "content": "Write a creative story"}],
+    temperature=1.0
+)
+```
+
+### Max Tokens Control
+
+```python
+response = client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[{"role": "user", "content": "Explain quantum physics"}],
+    max_tokens=500  # Limit response length
+)
+```
+
+## Speed Comparison
+
+```python
+import time
+
+def benchmark_provider(provider, model, prompt):
+    client = Portkey(provider=provider, Authorization="***")
+    
+    start = time.time()
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    end = time.time()
+    
+    return end - start
+
+# Groq is typically 5-10x faster
+groq_time = benchmark_provider("groq", "llama-3.3-70b-versatile", "Write a haiku")
+print(f"Groq: {groq_time:.2f}s")
+```
+
+## Fallback Configuration
+
+Use Groq first for speed, fallback to others:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {
+            "provider": "groq",
+            "api_key": "***",
+            "override_params": {"model": "llama-3.3-70b-versatile"}
+        },
+        {
+            "provider": "together-ai",
+            "api_key": "***",
+            "override_params": {"model": "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"}
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Load Balancing
+
+Balance across Groq models:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "provider": "groq",
+            "api_key": "***",
+            "override_params": {"model": "llama-3.3-70b-versatile"},
+            "weight": 0.7
+        },
+        {
+            "provider": "groq",
+            "api_key": "***",
+            "override_params": {"model": "llama-3.1-8b-instant"},
+            "weight": 0.3
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Error Handling
+
+```python
+from portkey_ai.exceptions import (
+    RateLimitError,
+    APIError,
+    AuthenticationError
+)
+
+try:
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+except RateLimitError as e:
+    print(f"Rate limit: {e}")
+    # Groq has generous rate limits but they exist
+except AuthenticationError as e:
+    print(f"Invalid API key: {e}")
+except APIError as e:
+    print(f"API error: {e}")
+```
+
+## Best Practices
+
+1. **Leverage speed** - Build real-time features
+2. **Use streaming** - Take advantage of instant response start
+3. **Enable function calling** - Fast tool use
+4. **Use 8B for simple tasks** - Instant responses
+5. **Use 70B for complex tasks** - Still very fast
+6. **Implement rate limit handling** - Free tier has limits
+7. **Monitor latency** - Groq provides latency metrics
+8. **Cache when possible** - Even faster responses
+
+## Use Cases
+
+### Real-time Chat
+```python
+# Ultra-responsive chat experience
+stream = client.chat.completions.create(
+    model="llama-3.1-8b-instant",
+    messages=conversation_history,
+    stream=True
+)
+```
+
+### Code Completion
+```python
+# Near-instant code suggestions
+response = client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[{"role": "user", "content": f"Complete this code: {code_snippet}"}],
+    max_tokens=200
+)
+```
+
+### Gaming NPCs
+```python
+# Real-time NPC responses
+response = client.chat.completions.create(
+    model="llama-3.1-8b-instant",
+    messages=[{"role": "user", "content": f"NPC reaction to: {player_action}"}],
+    temperature=0.8
+)
+```
+
+## Rate Limits
+
+**Free Tier:**
+- 30 requests per minute
+- 14,400 requests per day
+- Generous for development
+
+**Paid Tiers:**
+- Higher rate limits
+- Priority access
+- Contact Groq for details
+
+## LPU Technology
+
+Groq's Language Processing Unit (LPU) provides:
+
+- **Deterministic performance** - Consistent latency
+- **Low latency** - Less than 1 second for most requests
+- **High throughput** - 500+ tokens/second
+- **Energy efficient** - Lower power consumption
+- **Scalable** - Handle large workloads
+
+## Pricing
+
+Groq offers very competitive pricing:
+
+<Card title="Groq Pricing" icon="dollar-sign" href="https://portkey.ai/models?provider=groq">
+  View detailed pricing for all Groq models
+</Card>
+
+## Getting Started
+
+1. Sign up at [Groq Console](https://console.groq.com/)
+2. Get your API key
+3. Start with free tier
+4. Experience the speed!
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Together AI" icon="server" href="/providers/together-ai">
+    Alternative open models
+  </Card>
+  <Card title="Anyscale" icon="scale-balanced" href="/providers/anyscale">
+    Another fast inference option
+  </Card>
+  <Card title="Streaming" icon="water" href="/essentials/streaming">
+    Optimize streaming responses
+  </Card>
+  <Card title="Real-time Apps" icon="bolt" href="/essentials/realtime">
+    Build real-time applications
+  </Card>
+</CardGroup>

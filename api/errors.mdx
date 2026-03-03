@@ -1,0 +1,249 @@
+---
+title: 'Error Handling'
+description: 'Error codes and responses from the Portkey AI Gateway'
+---
+
+## Error Response Format
+
+When an error occurs, the gateway returns a JSON response with error details:
+
+```json
+{
+  "status": "failure",
+  "message": "Error description",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_api_key",
+    "message": "Incorrect API key provided"
+  }
+}
+```
+
+## HTTP Status Codes
+
+The gateway uses standard HTTP status codes:
+
+### 2xx Success
+
+<ResponseField name="200" type="OK">
+  Request succeeded
+</ResponseField>
+
+<ResponseField name="201" type="Created">
+  Resource created successfully
+</ResponseField>
+
+### 4xx Client Errors
+
+<ResponseField name="400" type="Bad Request">
+  Invalid request format or parameters
+</ResponseField>
+
+<ResponseField name="401" type="Unauthorized">
+  Invalid or missing authentication credentials
+</ResponseField>
+
+<ResponseField name="403" type="Forbidden">
+  Valid credentials but insufficient permissions
+</ResponseField>
+
+<ResponseField name="404" type="Not Found">
+  Requested resource does not exist
+</ResponseField>
+
+<ResponseField name="422" type="Unprocessable Entity">
+  Request format is valid but contains semantic errors
+</ResponseField>
+
+<ResponseField name="429" type="Too Many Requests">
+  Rate limit exceeded
+</ResponseField>
+
+### 5xx Server Errors
+
+<ResponseField name="500" type="Internal Server Error">
+  Unexpected server error
+</ResponseField>
+
+<ResponseField name="502" type="Bad Gateway">
+  Error from upstream provider
+</ResponseField>
+
+<ResponseField name="503" type="Service Unavailable">
+  Service temporarily unavailable
+</ResponseField>
+
+<ResponseField name="504" type="Gateway Timeout">
+  Request timeout from upstream provider
+</ResponseField>
+
+## Error Types
+
+### Authentication Errors
+
+```json
+{
+  "status": "failure",
+  "message": "Provider authentication failed",
+  "error": {
+    "type": "authentication_error",
+    "code": "invalid_api_key"
+  }
+}
+```
+
+**Common causes:**
+- Missing `x-portkey-api-key` header
+- Invalid API key for the provider
+- Expired API key
+
+### Invalid Request Errors
+
+```json
+{
+  "status": "failure",
+  "message": "Invalid request parameters",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "missing_required_parameter",
+    "param": "model"
+  }
+}
+```
+
+**Common causes:**
+- Missing required parameters
+- Invalid parameter values
+- Malformed JSON
+
+### Provider Errors
+
+```json
+{
+  "status": "failure",
+  "message": "Provider request failed",
+  "error": {
+    "type": "provider_error",
+    "code": "model_not_found",
+    "provider": "openai"
+  }
+}
+```
+
+**Common causes:**
+- Invalid model name
+- Model not available for your account
+- Provider API is down
+
+### Rate Limit Errors
+
+```json
+{
+  "status": "failure",
+  "message": "Rate limit exceeded",
+  "error": {
+    "type": "rate_limit_error",
+    "code": "rate_limit_exceeded"
+  }
+}
+```
+
+**Response headers:**
+```
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1677652320
+```
+
+### Timeout Errors
+
+```json
+{
+  "status": "failure",
+  "message": "Request timeout",
+  "error": {
+    "type": "timeout_error",
+    "code": "request_timeout"
+  }
+}
+```
+
+**Common causes:**
+- Provider taking too long to respond
+- Network issues
+- Large request or response
+
+## Error Handling Best Practices
+
+### Retry Strategy
+
+Implement exponential backoff for retries:
+
+```python
+import time
+from openai import OpenAI
+
+def make_request_with_retry(client, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": "Hello!"}]
+            )
+            return response
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise
+            wait_time = 2 ** attempt
+            time.sleep(wait_time)
+```
+
+### Fallback Configuration
+
+Use the gateway's built-in fallback support:
+
+```bash
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H 'x-portkey-config: {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+      {"provider": "openai", "api_key": "sk-..."},
+      {"provider": "anthropic", "api_key": "sk-ant-..."}
+    ]
+  }' \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+### Check Provider Status
+
+Before making requests, you can check provider availability:
+
+```bash
+curl http://localhost:8787/v1/models \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..."
+```
+
+## Debug Mode
+
+Enable debug mode for detailed error information:
+
+<ParamField header="x-portkey-debug" type="boolean">
+  Enable debug mode (returns additional error details)
+</ParamField>
+
+```bash
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -H "x-portkey-debug: true" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```

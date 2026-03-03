@@ -1,0 +1,728 @@
+---
+title: "JavaScript/TypeScript SDK"
+description: "Use Portkey's JavaScript SDK for production-ready LLM applications in Node.js and browsers"
+---
+
+The Portkey JavaScript SDK provides a fully-typed interface to access 250+ LLMs through a unified API with production-grade routing, fallbacks, and observability.
+
+## Overview
+
+The JavaScript/TypeScript SDK offers:
+
+- **OpenAI-Compatible API**: Drop-in replacement for OpenAI SDK
+- **250+ LLMs**: Access any LLM through a unified interface
+- **TypeScript Support**: Full type definitions and autocomplete
+- **Cross-Platform**: Works in Node.js, Deno, and modern browsers
+- **Advanced Routing**: Fallbacks, load balancing, and retries
+- **Production Features**: Caching, guardrails, and observability
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install portkey-ai
+```
+
+```bash yarn
+yarn add portkey-ai
+```
+
+```bash pnpm
+pnpm add portkey-ai
+```
+
+```bash bun
+bun add portkey-ai
+```
+</CodeGroup>
+
+## Quick Start
+
+<Steps>
+  <Step title="Get Your API Keys">
+    Sign up at [Portkey](https://app.portkey.ai/) and get your API key. Add your provider API keys as Virtual Keys.
+  </Step>
+  
+  <Step title="Import and Initialize">
+    ```typescript
+    import Portkey from 'portkey-ai';
+    
+    const portkey = new Portkey({
+        apiKey: "your-portkey-api-key",
+        virtualKey: "your-openai-virtual-key"
+    });
+    ```
+  </Step>
+  
+  <Step title="Make Your First Request">
+    ```typescript
+    const response = await portkey.chat.completions.create({
+        model: "gpt-4",
+        messages: [{role: "user", content: "Hello!"}]
+    });
+    
+    console.log(response.choices[0].message.content);
+    ```
+  </Step>
+</Steps>
+
+## Basic Usage
+
+### Chat Completions
+
+```typescript
+import Portkey from 'portkey-ai';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-openai-virtual-key"
+});
+
+const response = await portkey.chat.completions.create({
+    model: "gpt-4",
+    messages: [
+        {role: "system", content: "You are a helpful assistant."},
+        {role: "user", content: "Explain quantum computing simply."}
+    ],
+    temperature: 0.7,
+    maxTokens: 500
+});
+
+console.log(response.choices[0].message.content);
+```
+
+### Streaming Responses
+
+```typescript
+import Portkey from 'portkey-ai';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-openai-virtual-key"
+});
+
+const stream = await portkey.chat.completions.create({
+    model: "gpt-4",
+    messages: [{role: "user", content: "Write a story"}],
+    stream: true
+});
+
+for await (const chunk of stream) {
+    if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content);
+    }
+}
+```
+
+### Completions (Legacy)
+
+```typescript
+const response = await portkey.completions.create({
+    model: "gpt-3.5-turbo-instruct",
+    prompt: "Once upon a time",
+    maxTokens: 100
+});
+
+console.log(response.choices[0].text);
+```
+
+## Using Different Providers
+
+Switch between providers easily:
+
+<CodeGroup>
+```typescript OpenAI
+import Portkey from 'portkey-ai';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    provider: "openai",
+    Authorization: "your-openai-api-key"
+});
+
+const response = await portkey.chat.completions.create({
+    model: "gpt-4",
+    messages: [{role: "user", content: "Hello!"}]
+});
+```
+
+```typescript Anthropic
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    provider: "anthropic",
+    Authorization: "your-anthropic-api-key"
+});
+
+const response = await portkey.chat.completions.create({
+    model: "claude-3-opus-20240229",
+    messages: [{role: "user", content: "Hello!"}]
+});
+```
+
+```typescript Google Gemini
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    provider: "google",
+    Authorization: "your-google-api-key"
+});
+
+const response = await portkey.chat.completions.create({
+    model: "gemini-1.5-pro",
+    messages: [{role: "user", content: "Hello!"}]
+});
+```
+
+```typescript Azure OpenAI
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    provider: "azure-openai",
+    Authorization: "your-azure-api-key",
+    azureResourceName: "your-resource-name",
+    azureDeploymentId: "your-deployment-id",
+    azureApiVersion: "2024-02-01"
+});
+
+const response = await portkey.chat.completions.create({
+    model: "gpt-4",
+    messages: [{role: "user", content: "Hello!"}]
+});
+```
+</CodeGroup>
+
+## Advanced Routing with Configs
+
+### Fallback Strategy
+
+Automatically fallback to backup providers:
+
+```typescript
+import Portkey from 'portkey-ai';
+
+const config = {
+    strategy: {mode: "fallback"},
+    targets: [
+        {virtualKey: "openai-virtual-key"},
+        {virtualKey: "anthropic-virtual-key"},
+        {virtualKey: "together-virtual-key"}
+    ]
+};
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    config: config
+});
+
+// Will automatically fallback if OpenAI fails
+const response = await portkey.chat.completions.create({
+    model: "gpt-4",
+    messages: [{role: "user", content: "Hello!"}]
+});
+```
+
+### Load Balancing
+
+Distribute traffic across multiple providers:
+
+```typescript
+const config = {
+    strategy: {mode: "loadbalance"},
+    targets: [
+        {virtualKey: "openai-key-1", weight: 0.7},
+        {virtualKey: "openai-key-2", weight: 0.3}
+    ]
+};
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    config: config
+});
+```
+
+### Automatic Retries
+
+```typescript
+const config = {
+    retry: {
+        attempts: 5,
+        onStatusCodes: [429, 500, 502, 503]
+    }
+};
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-virtual-key",
+    config: config
+});
+```
+
+### Request Timeouts
+
+```typescript
+const config = {
+    requestTimeout: 30000  // 30 seconds
+};
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-virtual-key",
+    config: config
+});
+```
+
+## Caching
+
+Enable caching to reduce costs and latency:
+
+### Simple Caching
+
+```typescript
+import Portkey from 'portkey-ai';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-virtual-key"
+});
+
+const response = await portkey.chat.completions.create({
+    model: "gpt-4",
+    messages: [{role: "user", content: "What is 2+2?"}]
+}, {
+    cache: "simple",
+    cacheForceRefresh: false
+});
+```
+
+### Semantic Caching
+
+```typescript
+const config = {
+    cache: {
+        mode: "semantic",
+        maxAge: 3600  // 1 hour
+    }
+};
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-virtual-key",
+    config: config
+});
+
+const response = await portkey.chat.completions.create({
+    model: "gpt-4",
+    messages: [{role: "user", content: "What's two plus two?"}]
+});
+```
+
+## Guardrails
+
+Add input/output guardrails:
+
+```typescript
+const config = {
+    outputGuardrails: [
+        {
+            "default.contains": {
+                operator: "none",
+                words: ["inappropriate", "offensive"]
+            },
+            deny: true
+        }
+    ]
+};
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-virtual-key",
+    config: config
+});
+```
+
+## Metadata and Tracking
+
+Add custom metadata for better observability:
+
+```typescript
+import Portkey from 'portkey-ai';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-virtual-key"
+});
+
+const response = await portkey.chat.completions.create({
+    model: "gpt-4",
+    messages: [{role: "user", content: "Hello!"}]
+}, {
+    metadata: {
+        userId: "user_123",
+        sessionId: "session_456",
+        environment: "production"
+    },
+    traceId: "custom-trace-id"
+});
+```
+
+## Embeddings
+
+Generate embeddings:
+
+```typescript
+import Portkey from 'portkey-ai';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-openai-virtual-key"
+});
+
+const response = await portkey.embeddings.create({
+    model: "text-embedding-3-small",
+    input: "The quick brown fox jumps over the lazy dog"
+});
+
+console.log(response.data[0].embedding);
+```
+
+## Image Generation
+
+Generate images:
+
+```typescript
+import Portkey from 'portkey-ai';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-openai-virtual-key"
+});
+
+const response = await portkey.images.generate({
+    model: "dall-e-3",
+    prompt: "A serene landscape with mountains",
+    n: 1,
+    size: "1024x1024"
+});
+
+console.log(response.data[0].url);
+```
+
+## Audio
+
+### Speech to Text
+
+```typescript
+import Portkey from 'portkey-ai';
+import fs from 'fs';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-openai-virtual-key"
+});
+
+const audioFile = fs.createReadStream("speech.mp3");
+const response = await portkey.audio.transcriptions.create({
+    model: "whisper-1",
+    file: audioFile
+});
+
+console.log(response.text);
+```
+
+### Text to Speech
+
+```typescript
+import Portkey from 'portkey-ai';
+import fs from 'fs';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-openai-virtual-key"
+});
+
+const response = await portkey.audio.speech.create({
+    model: "tts-1",
+    voice: "alloy",
+    input: "Hello, this is a test."
+});
+
+const buffer = Buffer.from(await response.arrayBuffer());
+fs.writeFileSync("output.mp3", buffer);
+```
+
+## Function Calling
+
+```typescript
+import Portkey from 'portkey-ai';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-openai-virtual-key"
+});
+
+const tools = [
+    {
+        type: "function",
+        function: {
+            name: "get_weather",
+            description: "Get the current weather in a location",
+            parameters: {
+                type: "object",
+                properties: {
+                    location: {
+                        type: "string",
+                        description: "City name"
+                    },
+                    unit: {
+                        type: "string",
+                        enum: ["celsius", "fahrenheit"]
+                    }
+                },
+                required: ["location"]
+            }
+        }
+    }
+];
+
+const response = await portkey.chat.completions.create({
+    model: "gpt-4",
+    messages: [{role: "user", content: "What's the weather in Paris?"}],
+    tools: tools,
+    toolChoice: "auto"
+});
+
+if (response.choices[0].message.toolCalls) {
+    const toolCall = response.choices[0].message.toolCalls[0];
+    console.log(`Function: ${toolCall.function.name}`);
+    console.log(`Arguments: ${toolCall.function.arguments}`);
+}
+```
+
+## Vision
+
+Analyze images:
+
+```typescript
+import Portkey from 'portkey-ai';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-openai-virtual-key"
+});
+
+const response = await portkey.chat.completions.create({
+    model: "gpt-4-vision-preview",
+    messages: [
+        {
+            role: "user",
+            content: [
+                {type: "text", text: "What's in this image?"},
+                {
+                    type: "image_url",
+                    imageUrl: {
+                        url: "https://example.com/image.jpg"
+                    }
+                }
+            ]
+        }
+    ],
+    maxTokens: 300
+});
+
+console.log(response.choices[0].message.content);
+```
+
+## Error Handling
+
+```typescript
+import Portkey from 'portkey-ai';
+import {
+    PortkeyError,
+    APIError,
+    RateLimitError,
+    APIConnectionError
+} from 'portkey-ai';
+
+const portkey = new Portkey({
+    apiKey: "your-portkey-api-key",
+    virtualKey: "your-virtual-key"
+});
+
+try {
+    const response = await portkey.chat.completions.create({
+        model: "gpt-4",
+        messages: [{role: "user", content: "Hello!"}]
+    });
+} catch (error) {
+    if (error instanceof RateLimitError) {
+        console.error("Rate limit exceeded:", error);
+    } else if (error instanceof APIConnectionError) {
+        console.error("Connection error:", error);
+    } else if (error instanceof APIError) {
+        console.error("API error:", error);
+    } else if (error instanceof PortkeyError) {
+        console.error("Portkey error:", error);
+    }
+}
+```
+
+## Browser Usage
+
+### Next.js API Route
+
+```typescript
+// app/api/chat/route.ts
+import Portkey from 'portkey-ai';
+import { NextResponse } from 'next/server';
+
+export async function POST(req: Request) {
+    const { messages } = await req.json();
+    
+    const portkey = new Portkey({
+        apiKey: process.env.PORTKEY_API_KEY!,
+        virtualKey: process.env.OPENAI_VIRTUAL_KEY!
+    });
+    
+    const response = await portkey.chat.completions.create({
+        model: "gpt-4",
+        messages: messages
+    });
+    
+    return NextResponse.json(response);
+}
+```
+
+### React Hook
+
+```typescript
+// hooks/useChat.ts
+import { useState } from 'react';
+
+export function useChat() {
+    const [loading, setLoading] = useState(false);
+    const [messages, setMessages] = useState([]);
+    
+    const sendMessage = async (content: string) => {
+        setLoading(true);
+        
+        const newMessages = [...messages, {role: "user", content}];
+        setMessages(newMessages);
+        
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({messages: newMessages})
+        });
+        
+        const data = await response.json();
+        setMessages([...newMessages, {
+            role: "assistant",
+            content: data.choices[0].message.content
+        }]);
+        
+        setLoading(false);
+    };
+    
+    return { messages, sendMessage, loading };
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Environment Variables">
+    Store API keys in environment variables:
+    ```typescript
+    const portkey = new Portkey({
+        apiKey: process.env.PORTKEY_API_KEY,
+        virtualKey: process.env.VIRTUAL_KEY
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="Implement Fallbacks">
+    Always configure fallback providers for production:
+    ```typescript
+    const config = {strategy: {mode: "fallback"}, targets: [...]};
+    ```
+  </Accordion>
+  
+  <Accordion title="Enable Caching">
+    Use caching for repeated queries to reduce costs:
+    ```typescript
+    const config = {cache: {mode: "semantic", maxAge: 3600}};
+    ```
+  </Accordion>
+  
+  <Accordion title="Add Metadata">
+    Always add metadata for better tracking:
+    ```typescript
+    metadata: {userId: "user_123", environment: "production"}
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle Errors Gracefully">
+    Implement proper error handling for production applications.
+  </Accordion>
+</AccordionGroup>
+
+## Complete Example
+
+```typescript
+import Portkey from 'portkey-ai';
+
+// Configure with fallbacks and caching
+const config = {
+    strategy: {mode: "fallback"},
+    targets: [
+        {virtualKey: "openai-key"},
+        {virtualKey: "anthropic-key"}
+    ],
+    retry: {attempts: 3},
+    cache: {mode: "semantic", maxAge: 3600}
+};
+
+const portkey = new Portkey({
+    apiKey: process.env.PORTKEY_API_KEY!,
+    config: config
+});
+
+async function chat(userMessage: string) {
+    try {
+        const response = await portkey.chat.completions.create({
+            model: "gpt-4",
+            messages: [
+                {role: "system", content: "You are a helpful assistant."},
+                {role: "user", content: userMessage}
+            ],
+            temperature: 0.7,
+            maxTokens: 500
+        }, {
+            metadata: {
+                userId: "user_123",
+                feature: "chat",
+                environment: "production"
+            },
+            traceId: "chat-session-001"
+        });
+        
+        return response.choices[0].message.content;
+    } catch (error) {
+        console.error("Chat error:", error);
+        throw error;
+    }
+}
+
+// Usage
+const reply = await chat("Explain AI in simple terms.");
+console.log(reply);
+```
+
+## Resources
+
+- [JavaScript SDK Reference](https://portkey.ai/docs)
+- [Gateway Configs](/concepts/configs)
+- [Virtual Keys Setup](https://portkey.ai/docs)
+- [GitHub Repository](https://github.com/Portkey-AI/portkey-node)
+
+<Note>
+  Questions? Join our [Discord community](https://discord.gg/portkey) for help.
+</Note>

@@ -1,0 +1,206 @@
+---
+title: 'Providers Overview'
+description: 'Learn how Portkey AI Gateway routes to 250+ LLMs from 78+ providers'
+---
+
+## What are Providers?
+
+Providers in Portkey AI Gateway are integrations with AI model providers like OpenAI, Anthropic, Google, AWS Bedrock, and more. The gateway acts as a unified interface, allowing you to:
+
+- **Route to 250+ models** from a single API
+- **Switch providers** without changing your code
+- **Implement fallbacks** across different providers
+- **Load balance** between multiple providers
+- **Compare models** from different providers side-by-side
+
+## How Routing Works
+
+Portkey uses a unified OpenAI-compatible API format. When you make a request:
+
+1. **Specify the provider** using the `provider` header or config
+2. **Gateway transforms** your request to the provider's format
+3. **Provider responds** and gateway transforms it back to OpenAI format
+4. **You receive** a consistent response structure
+
+### Basic Routing Example
+
+```python
+from portkey_ai import Portkey
+
+# Route to OpenAI
+client = Portkey(
+    provider="openai",
+    Authorization="sk-***"
+)
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+```javascript
+import Portkey from 'portkey-ai';
+
+// Route to Anthropic
+const client = new Portkey({
+    provider: "anthropic",
+    Authorization: "sk-ant-***"
+});
+
+const response = await client.chat.completions.create({
+    model: "claude-3-5-sonnet-20241022",
+    messages: [{role: "user", content: "Hello!"}]
+});
+```
+
+## Advanced Routing with Configs
+
+Use configs for sophisticated routing strategies:
+
+### Fallback Routing
+
+Automatically fallback to another provider if the primary fails:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"provider": "openai", "api_key": "sk-***"},
+        {"provider": "anthropic", "api_key": "sk-ant-***"}
+    ]
+}
+
+client = client.with_options(config=config)
+```
+
+### Load Balancing
+
+Distribute requests across multiple providers:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {"provider": "openai", "weight": 0.7},
+        {"provider": "azure-openai", "weight": 0.3}
+    ]
+}
+```
+
+### Conditional Routing
+
+Route based on request properties:
+
+```python
+config = {
+    "strategy": {"mode": "conditional"},
+    "conditions": [
+        {
+            "query": {"metadata.user_tier": "premium"},
+            "then": "openai_gpt4"
+        },
+        {
+            "query": {"metadata.user_tier": "free"},
+            "then": "groq_llama"
+        }
+    ]
+}
+```
+
+## Provider Authentication
+
+Each provider requires authentication. You can provide credentials in multiple ways:
+
+### 1. Direct Header
+
+```python
+client = Portkey(
+    provider="openai",
+    Authorization="sk-***"  # Provider API key
+)
+```
+
+### 2. Provider-Specific Headers
+
+```python
+client = Portkey(
+    provider="anthropic",
+    api_key="sk-ant-***"  # Anthropic-specific
+)
+```
+
+### 3. Config-Based
+
+```python
+config = {
+    "targets": [{
+        "provider": "openai",
+        "api_key": "sk-***"
+    }]
+}
+```
+
+### 4. Virtual Keys (Enterprise)
+
+Store keys securely in Portkey and reference them:
+
+```python
+client = Portkey(
+    provider="openai",
+    virtual_key="portkey_virtual_***"
+)
+```
+
+## Supported Features by Provider
+
+Different providers support different features:
+
+| Feature | OpenAI | Anthropic | Azure | Bedrock | Gemini | Cohere |
+|---------|--------|-----------|-------|---------|--------|--------|
+| Chat Completions | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Streaming | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Embeddings | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Image Generation | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Function Calling | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Vision | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Audio | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+
+## Provider-Specific Headers
+
+Some providers support additional headers:
+
+### OpenAI
+- `OpenAI-Organization`: Organization ID
+- `OpenAI-Project`: Project ID
+- `OpenAI-Beta`: Beta features
+
+### Anthropic
+- `anthropic-version`: API version (default: 2023-06-01)
+- `anthropic-beta`: Beta features
+
+### Azure OpenAI
+- `api-key`: Azure API key
+- `api-version`: API version (required)
+
+### AWS Bedrock
+- AWS credentials via environment variables or IAM roles
+- `awsRegion`: AWS region
+- `awsAccessKeyId`, `awsSecretAccessKey`, `awsSessionToken`
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Supported Providers" icon="list" href="/providers/supported-providers">
+    View the complete list of 78+ supported providers
+  </Card>
+  <Card title="OpenAI Integration" icon="openai" href="/providers/openai">
+    Learn about OpenAI integration
+  </Card>
+  <Card title="Fallback Routing" icon="arrows-rotate" href="/essentials/fallbacks">
+    Implement automatic fallbacks
+  </Card>
+  <Card title="Load Balancing" icon="scale-balanced" href="/essentials/load-balancing">
+    Distribute requests across providers
+  </Card>
+</CardGroup>

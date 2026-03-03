@@ -1,0 +1,706 @@
+---
+title: "Python SDK"
+description: "Use Portkey's native Python SDK for production-ready LLM applications"
+---
+
+The Portkey Python SDK provides a native, fully-typed interface to access 250+ LLMs through a unified API with production-grade routing, fallbacks, and observability.
+
+## Overview
+
+The Python SDK offers:
+
+- **OpenAI-Compatible API**: Drop-in replacement for OpenAI SDK
+- **250+ LLMs**: Access any LLM through a unified interface
+- **Type Safety**: Full type hints and IDE autocomplete
+- **Advanced Routing**: Fallbacks, load balancing, and conditional routing
+- **Production Features**: Caching, retries, timeouts, and guardrails
+- **Observability**: Built-in logging, tracing, and analytics
+
+## Installation
+
+<CodeGroup>
+```bash pip
+pip install portkey-ai
+```
+
+```bash poetry
+poetry add portkey-ai
+```
+
+```bash conda
+conda install -c conda-forge portkey-ai
+```
+</CodeGroup>
+
+## Quick Start
+
+<Steps>
+  <Step title="Get Your API Keys">
+    Sign up at [Portkey](https://app.portkey.ai/) and get your API key. Add your provider API keys as Virtual Keys.
+  </Step>
+  
+  <Step title="Import and Initialize">
+    ```python
+    from portkey_ai import Portkey
+    
+    client = Portkey(
+        api_key="your-portkey-api-key",
+        virtual_key="your-openai-virtual-key"
+    )
+    ```
+  </Step>
+  
+  <Step title="Make Your First Request">
+    ```python
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    
+    print(response.choices[0].message.content)
+    ```
+  </Step>
+</Steps>
+
+## Basic Usage
+
+### Chat Completions
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-openai-virtual-key"
+)
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Explain quantum computing in simple terms."}
+    ],
+    temperature=0.7,
+    max_tokens=500
+)
+
+print(response.choices[0].message.content)
+```
+
+### Streaming Responses
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-openai-virtual-key"
+)
+
+stream = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Write a story"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+```
+
+### Completions (Legacy)
+
+```python
+response = client.completions.create(
+    model="gpt-3.5-turbo-instruct",
+    prompt="Once upon a time",
+    max_tokens=100
+)
+
+print(response.choices[0].text)
+```
+
+## Using Different Providers
+
+Switch between providers by changing the `provider` or `virtual_key`:
+
+<CodeGroup>
+```python OpenAI
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    Authorization="your-openai-api-key"
+)
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+```python Anthropic
+client = Portkey(
+    api_key="your-portkey-api-key",
+    provider="anthropic",
+    Authorization="your-anthropic-api-key"
+)
+
+response = client.chat.completions.create(
+    model="claude-3-opus-20240229",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+```python Google Gemini
+client = Portkey(
+    api_key="your-portkey-api-key",
+    provider="google",
+    Authorization="your-google-api-key"
+)
+
+response = client.chat.completions.create(
+    model="gemini-1.5-pro",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+```python Azure OpenAI
+client = Portkey(
+    api_key="your-portkey-api-key",
+    provider="azure-openai",
+    Authorization="your-azure-api-key",
+    azure_resource_name="your-resource-name",
+    azure_deployment_id="your-deployment-id",
+    azure_api_version="2024-02-01"
+)
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+</CodeGroup>
+
+## Advanced Routing with Configs
+
+### Fallback Strategy
+
+Automatically fallback to backup providers:
+
+```python
+from portkey_ai import Portkey
+
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"virtual_key": "openai-virtual-key"},
+        {"virtual_key": "anthropic-virtual-key"},
+        {"virtual_key": "together-virtual-key"}
+    ]
+}
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    config=config
+)
+
+# Will automatically fallback if OpenAI fails
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+### Load Balancing
+
+Distribute traffic across multiple providers:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "virtual_key": "openai-key-1",
+            "weight": 0.7
+        },
+        {
+            "virtual_key": "openai-key-2",
+            "weight": 0.3
+        }
+    ]
+}
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    config=config
+)
+```
+
+### Automatic Retries
+
+```python
+config = {
+    "retry": {
+        "attempts": 5,
+        "on_status_codes": [429, 500, 502, 503]
+    }
+}
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-virtual-key",
+    config=config
+)
+```
+
+### Request Timeouts
+
+```python
+config = {
+    "request_timeout": 30000  # 30 seconds
+}
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-virtual-key",
+    config=config
+)
+```
+
+## Caching
+
+Enable caching to reduce costs and latency:
+
+### Simple Caching
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-virtual-key"
+)
+
+# Enable cache for this request
+response = client.with_options(
+    cache="simple",
+    cache_force_refresh=False
+).chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "What is 2+2?"}]
+)
+```
+
+### Semantic Caching
+
+```python
+config = {
+    "cache": {
+        "mode": "semantic",
+        "max_age": 3600  # 1 hour
+    }
+}
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-virtual-key",
+    config=config
+)
+
+# Semantically similar queries will hit cache
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "What's two plus two?"}]
+)
+```
+
+## Guardrails
+
+Add input/output guardrails:
+
+```python
+config = {
+    "output_guardrails": [
+        {
+            "default.contains": {
+                "operator": "none",
+                "words": ["inappropriate", "offensive"]
+            },
+            "deny": True
+        }
+    ]
+}
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-virtual-key",
+    config=config
+)
+```
+
+## Metadata and Tracking
+
+Add custom metadata for better observability:
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-virtual-key"
+)
+
+response = client.with_options(
+    metadata={
+        "user_id": "user_123",
+        "session_id": "session_456",
+        "environment": "production"
+    },
+    trace_id="custom-trace-id"
+).chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+## Embeddings
+
+Generate embeddings:
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-openai-virtual-key"
+)
+
+response = client.embeddings.create(
+    model="text-embedding-3-small",
+    input="The quick brown fox jumps over the lazy dog"
+)
+
+print(response.data[0].embedding)
+```
+
+## Image Generation
+
+Generate images:
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-openai-virtual-key"
+)
+
+response = client.images.generate(
+    model="dall-e-3",
+    prompt="A serene landscape with mountains",
+    n=1,
+    size="1024x1024"
+)
+
+print(response.data[0].url)
+```
+
+## Audio
+
+### Speech to Text
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-openai-virtual-key"
+)
+
+audio_file = open("speech.mp3", "rb")
+response = client.audio.transcriptions.create(
+    model="whisper-1",
+    file=audio_file
+)
+
+print(response.text)
+```
+
+### Text to Speech
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-openai-virtual-key"
+)
+
+response = client.audio.speech.create(
+    model="tts-1",
+    voice="alloy",
+    input="Hello, this is a test."
+)
+
+with open("output.mp3", "wb") as f:
+    f.write(response.content)
+```
+
+## Function Calling
+
+```python
+from portkey_ai import Portkey
+import json
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-openai-virtual-key"
+)
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather in a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City name"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"]
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+    tools=tools,
+    tool_choice="auto"
+)
+
+if response.choices[0].message.tool_calls:
+    tool_call = response.choices[0].message.tool_calls[0]
+    print(f"Function: {tool_call.function.name}")
+    print(f"Arguments: {tool_call.function.arguments}")
+```
+
+## Vision
+
+Analyze images:
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-openai-virtual-key"
+)
+
+response = client.chat.completions.create(
+    model="gpt-4-vision-preview",
+    messages=[
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "What's in this image?"},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "https://example.com/image.jpg"
+                    }
+                }
+            ]
+        }
+    ],
+    max_tokens=300
+)
+
+print(response.choices[0].message.content)
+```
+
+## Async Support
+
+Use async/await for concurrent requests:
+
+```python
+import asyncio
+from portkey_ai import AsyncPortkey
+
+async def main():
+    client = AsyncPortkey(
+        api_key="your-portkey-api-key",
+        virtual_key="your-openai-virtual-key"
+    )
+    
+    response = await client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    
+    print(response.choices[0].message.content)
+
+asyncio.run(main())
+```
+
+### Async Streaming
+
+```python
+import asyncio
+from portkey_ai import AsyncPortkey
+
+async def main():
+    client = AsyncPortkey(
+        api_key="your-portkey-api-key",
+        virtual_key="your-openai-virtual-key"
+    )
+    
+    stream = await client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Write a story"}],
+        stream=True
+    )
+    
+    async for chunk in stream:
+        if chunk.choices[0].delta.content:
+            print(chunk.choices[0].delta.content, end="", flush=True)
+
+asyncio.run(main())
+```
+
+## Error Handling
+
+```python
+from portkey_ai import Portkey
+from portkey_ai.exceptions import (
+    PortkeyError,
+    APIError,
+    RateLimitError,
+    APIConnectionError
+)
+
+client = Portkey(
+    api_key="your-portkey-api-key",
+    virtual_key="your-virtual-key"
+)
+
+try:
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+except RateLimitError as e:
+    print(f"Rate limit exceeded: {e}")
+except APIConnectionError as e:
+    print(f"Connection error: {e}")
+except APIError as e:
+    print(f"API error: {e}")
+except PortkeyError as e:
+    print(f"Portkey error: {e}")
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Virtual Keys">
+    Store provider API keys as Virtual Keys in Portkey for better security:
+    ```python
+    client = Portkey(
+        api_key="your-portkey-api-key",
+        virtual_key="your-virtual-key"  # Secure and rotatable
+    )
+    ```
+  </Accordion>
+  
+  <Accordion title="Implement Fallbacks">
+    Always configure fallback providers for production:
+    ```python
+    config = {"strategy": {"mode": "fallback"}, "targets": [...]}
+    ```
+  </Accordion>
+  
+  <Accordion title="Enable Caching">
+    Use caching for repeated queries to reduce costs:
+    ```python
+    config = {"cache": {"mode": "semantic", "max_age": 3600}}
+    ```
+  </Accordion>
+  
+  <Accordion title="Add Metadata">
+    Always add metadata for better tracking and debugging:
+    ```python
+    metadata={"user_id": "user_123", "environment": "production"}
+    ```
+  </Accordion>
+  
+  <Accordion title="Use Async for High Throughput">
+    Use AsyncPortkey for applications with many concurrent requests.
+  </Accordion>
+</AccordionGroup>
+
+## Complete Example
+
+```python
+from portkey_ai import Portkey
+import os
+
+# Configure with fallbacks and caching
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"virtual_key": "openai-key"},
+        {"virtual_key": "anthropic-key"}
+    ],
+    "retry": {"attempts": 3},
+    "cache": {"mode": "semantic", "max_age": 3600}
+}
+
+client = Portkey(
+    api_key=os.environ["PORTKEY_API_KEY"],
+    config=config
+)
+
+# Make request with metadata
+response = client.with_options(
+    metadata={
+        "user_id": "user_123",
+        "feature": "chat",
+        "environment": "production"
+    },
+    trace_id="chat-session-001"
+).chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Explain AI in simple terms."}
+    ],
+    temperature=0.7,
+    max_tokens=500
+)
+
+print(response.choices[0].message.content)
+
+# View analytics at https://app.portkey.ai/
+```
+
+## Resources
+
+- [Python SDK Reference](https://portkey.ai/docs)
+- [Gateway Configs](/concepts/configs)
+- [Virtual Keys Setup](https://portkey.ai/docs)
+- [GitHub Repository](https://github.com/Portkey-AI/portkey-python)
+
+<Note>
+  Questions? Join our [Discord community](https://discord.gg/portkey) for help.
+</Note>

@@ -1,0 +1,384 @@
+---
+title: 'Cohere'
+description: 'Integrate Cohere models including Command R, Command R+, and embeddings for enterprise NLP'
+---
+
+## Overview
+
+Cohere provides enterprise-grade language models specialized for business applications, including powerful chat models, best-in-class embeddings, and reranking capabilities. Access Cohere through Portkey for production-ready NLP.
+
+**Base URL:** `https://api.cohere.ai`
+
+## Supported Features
+
+- ✅ Chat Completions (v2 API)
+- ✅ Streaming
+- ✅ Embeddings
+- ✅ Rerank (via Cohere API)
+- ✅ Tool Use (Function Calling)
+- ✅ Document Mode (RAG)
+- ✅ Citation Mode
+- ✅ Batch Embeddings
+- ❌ Image Generation
+- ❌ Vision
+
+## Quick Start
+
+### Chat Completions
+
+<CodeGroup>
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="cohere",
+    Authorization="***"  # Your Cohere API key
+)
+
+response = client.chat.completions.create(
+    model="command-r-plus-08-2024",
+    messages=[
+        {"role": "user", "content": "Explain RAG in simple terms"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "cohere",
+    Authorization: "***"  // Your Cohere API key
+});
+
+const response = await client.chat.completions.create({
+    model: "command-r-plus-08-2024",
+    messages: [
+        {role: "user", content: "Explain RAG in simple terms"}
+    ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: cohere" \
+  -H "Authorization: Bearer ***" \
+  -d '{
+    "model": "command-r-plus-08-2024",
+    "messages": [
+      {"role": "user", "content": "Explain RAG in simple terms"}
+    ]
+  }'
+```
+</CodeGroup>
+
+### Streaming
+
+```python
+stream = client.chat.completions.create(
+    model="command-r-plus-08-2024",
+    messages=[{"role": "user", "content": "Write a haiku about AI"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+## Available Models
+
+### Chat Models
+
+| Model | Context | Description | Best For |
+|-------|---------|-------------|----------|
+| `command-r-plus-08-2024` | 128K | Most capable | Complex tasks, RAG |
+| `command-r-08-2024` | 128K | Efficient | General purpose |
+| `command-r-plus` | 128K | Previous generation | Legacy apps |
+| `command-r` | 128K | Previous generation | Legacy apps |
+| `command` | 4K | Legacy model | Simple tasks |
+| `command-light` | 4K | Lightweight | Fast responses |
+
+### Embedding Models
+
+| Model | Dimensions | Description |
+|-------|-----------|-------------|
+| `embed-english-v3.0` | 1024 | English embeddings |
+| `embed-multilingual-v3.0` | 1024 | 100+ languages |
+| `embed-english-light-v3.0` | 384 | Compact English |
+| `embed-multilingual-light-v3.0` | 384 | Compact multilingual |
+| `embed-english-v2.0` | 4096 | Legacy |
+
+<Note>
+  **Cohere excels at:**
+  - **Enterprise deployments** with strong support
+  - **RAG applications** with citation support
+  - **Multilingual tasks** (100+ languages)
+  - **Semantic search** with best-in-class embeddings
+  - **Document grounding** for factual responses
+</Note>
+
+## Configuration Options
+
+### Headers
+
+```python
+client = Portkey(
+    provider="cohere",
+    Authorization="***"  # Bearer token format: "Bearer co-***" or just "co-***"
+)
+```
+
+| Header | Description | Required |
+|--------|-------------|----------|
+| `Authorization` | Cohere API key (Bearer token) | Yes |
+
+## Advanced Features
+
+### Tool Use (Function Calling)
+
+```python
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_products",
+            "description": "Search for products in the catalog",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Product category"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model="command-r-plus-08-2024",
+    messages=[{"role": "user", "content": "Find laptops under $1000"}],
+    tools=tools
+)
+
+if response.choices[0].message.tool_calls:
+    tool_call = response.choices[0].message.tool_calls[0]
+    print(f"Function: {tool_call.function.name}")
+    print(f"Arguments: {tool_call.function.arguments}")
+```
+
+### RAG with Document Grounding
+
+Cohere excels at RAG with built-in citation support:
+
+```python
+# Documents to ground the response
+documents = [
+    {
+        "id": "doc1",
+        "text": "Portkey is an AI Gateway that routes to 250+ LLMs."
+    },
+    {
+        "id": "doc2",
+        "text": "The gateway provides fallbacks, load balancing, and caching."
+    }
+]
+
+response = client.chat.completions.create(
+    model="command-r-plus-08-2024",
+    messages=[{"role": "user", "content": "What features does Portkey offer?"}],
+    # Pass documents via additional parameters
+    documents=documents,
+    citation_quality="accurate"
+)
+
+print(response.choices[0].message.content)
+
+# Access citations if available
+if hasattr(response.choices[0].message, 'citations'):
+    print("Citations:", response.choices[0].message.citations)
+```
+
+### Embeddings
+
+```python
+response = client.embeddings.create(
+    model="embed-english-v3.0",
+    input="Cohere provides enterprise-grade NLP",
+    input_type="search_document"  # or "search_query", "classification", "clustering"
+)
+
+embedding = response.data[0].embedding
+print(f"Dimensions: {len(embedding)}")
+```
+
+Batch embeddings:
+
+```python
+response = client.embeddings.create(
+    model="embed-english-v3.0",
+    input=[
+        "First document",
+        "Second document",
+        "Third document"
+    ],
+    input_type="search_document"
+)
+
+for i, item in enumerate(response.data):
+    print(f"Document {i}: {len(item.embedding)} dimensions")
+```
+
+### Embedding Input Types
+
+Optimize embeddings for your use case:
+
+| Input Type | Use Case |
+|-----------|----------|
+| `search_document` | Indexing documents for search |
+| `search_query` | Search queries |
+| `classification` | Text classification |
+| `clustering` | Document clustering |
+
+### Legacy Completions API
+
+For older command models:
+
+```python
+response = client.completions.create(
+    model="command",
+    prompt="Write a tagline for an AI gateway:",
+    max_tokens=50
+)
+
+print(response.choices[0].text)
+```
+
+## Fallback Configuration
+
+Fallback to GPT-4 if Cohere fails:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {
+            "provider": "cohere",
+            "api_key": "co-***",
+            "override_params": {"model": "command-r-plus-08-2024"}
+        },
+        {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "override_params": {"model": "gpt-4o"}
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Load Balancing
+
+Balance between Command R+ and Command R:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "provider": "cohere",
+            "api_key": "co-***",
+            "override_params": {"model": "command-r-plus-08-2024"},
+            "weight": 0.3
+        },
+        {
+            "provider": "cohere",
+            "api_key": "co-***",
+            "override_params": {"model": "command-r-08-2024"},
+            "weight": 0.7
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Error Handling
+
+```python
+from portkey_ai.exceptions import (
+    RateLimitError,
+    APIError,
+    AuthenticationError
+)
+
+try:
+    response = client.chat.completions.create(
+        model="command-r-plus-08-2024",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+except RateLimitError as e:
+    print(f"Rate limit exceeded: {e}")
+except AuthenticationError as e:
+    print(f"Invalid API key: {e}")
+except APIError as e:
+    print(f"API error: {e}")
+```
+
+## Best Practices
+
+1. **Use RAG mode** - Leverage document grounding for factual accuracy
+2. **Enable citations** - Track sources for enterprise use
+3. **Choose right embedding type** - Use appropriate input_type for embeddings
+4. **Use Command R+** - For complex tasks requiring reasoning
+5. **Use Command R** - For cost-effective general purpose tasks
+6. **Batch embeddings** - More efficient than individual requests
+7. **Implement streaming** - Better UX for long responses
+8. **Handle tool calls** - Multi-step reasoning with function calling
+
+## Enterprise Features
+
+- **Data privacy**: Cohere doesn't train on customer data
+- **Regional deployment**: Available in multiple regions
+- **SOC 2 Type II**: Enterprise compliance
+- **Custom deployments**: Private cloud options
+- **SLA support**: Enterprise support plans
+- **Fine-tuning**: Custom model training
+
+## Pricing
+
+Cohere offers competitive pricing with a free trial:
+
+<Card title="Cohere Pricing" icon="dollar-sign" href="https://portkey.ai/models?provider=cohere">
+  View detailed pricing for all Cohere models
+</Card>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Embeddings Guide" icon="vector-square" href="/essentials/embeddings">
+    Working with embeddings
+  </Card>
+  <Card title="RAG Guide" icon="book" href="/essentials/rag">
+    Building RAG applications
+  </Card>
+  <Card title="Function Calling" icon="function" href="/essentials/function-calling">
+    Tool use and function calling
+  </Card>
+  <Card title="Fallbacks" icon="arrows-rotate" href="/essentials/fallbacks">
+    Fallback configurations
+  </Card>
+</CardGroup>

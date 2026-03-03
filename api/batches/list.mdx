@@ -1,0 +1,264 @@
+---
+title: List Batches
+description: List all batches for your organization
+---
+
+## GET /v1/batches
+
+Returns a paginated list of all batches.
+
+## Authentication
+
+Requires provider authentication headers:
+
+```bash
+x-portkey-provider: openai
+Authorization: Bearer YOUR_OPENAI_API_KEY
+```
+
+## Request
+
+### Headers
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The provider to route the request to (e.g., `openai`)
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for the provider API
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="limit" type="integer">
+  Number of batches to return (default: 20, max: 100)
+</ParamField>
+
+<ParamField query="after" type="string">
+  Cursor for pagination - returns batches after this batch ID
+</ParamField>
+
+## Response
+
+<ResponseField name="data" type="array">
+  Array of batch objects
+  
+  <Expandable title="batch object">
+    <ResponseField name="id" type="string">
+      The batch identifier
+    </ResponseField>
+    
+    <ResponseField name="object" type="string">
+      The object type, always "batch"
+    </ResponseField>
+    
+    <ResponseField name="endpoint" type="string">
+      The endpoint used for the batch
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Current status of the batch
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="integer">
+      Unix timestamp of creation
+    </ResponseField>
+    
+    <ResponseField name="completed_at" type="integer">
+      Unix timestamp of completion (if completed)
+    </ResponseField>
+    
+    <ResponseField name="metadata" type="object">
+      Custom metadata
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  The object type, always "list"
+</ResponseField>
+
+<ResponseField name="has_more" type="boolean">
+  Whether there are more results available
+</ResponseField>
+
+<ResponseField name="first_id" type="string">
+  ID of the first batch in the list
+</ResponseField>
+
+<ResponseField name="last_id" type="string">
+  ID of the last batch in the list
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl https://localhost:8787/v1/batches?limit=10 \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer $OPENAI_API_KEY"
+```
+
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-***"
+)
+
+# List recent batches
+batches = client.batches.list(limit=10)
+for batch in batches.data:
+    print(f"{batch.id}: {batch.status} - Created {batch.created_at}")
+
+# Paginate through all batches
+all_batches = []
+after = None
+while True:
+    page = client.batches.list(limit=100, after=after)
+    all_batches.extend(page.data)
+    
+    if not page.has_more:
+        break
+    after = page.last_id
+
+print(f"Total batches: {len(all_batches)}")
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "openai",
+    Authorization: "sk-***"
+});
+
+// List recent batches
+const batches = await client.batches.list({ limit: 10 });
+batches.data.forEach(batch => {
+    console.log(`${batch.id}: ${batch.status} - Created ${batch.created_at}`);
+});
+
+// Paginate through all batches
+const allBatches = [];
+let after = null;
+while (true) {
+    const page = await client.batches.list({ limit: 100, after });
+    allBatches.push(...page.data);
+    
+    if (!page.has_more) break;
+    after = page.last_id;
+}
+
+console.log(`Total batches: ${allBatches.length}`);
+```
+
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "data": [
+    {
+      "id": "batch_abc123",
+      "object": "batch",
+      "endpoint": "/v1/chat/completions",
+      "errors": null,
+      "input_file_id": "file-abc123",
+      "completion_window": "24h",
+      "status": "completed",
+      "output_file_id": "file-xyz789",
+      "error_file_id": null,
+      "created_at": 1713894800,
+      "in_progress_at": 1713894900,
+      "completed_at": 1713898500,
+      "metadata": {
+        "description": "Daily batch job"
+      }
+    },
+    {
+      "id": "batch_def456",
+      "object": "batch",
+      "endpoint": "/v1/embeddings",
+      "status": "in_progress",
+      "input_file_id": "file-def456",
+      "created_at": 1713895000,
+      "metadata": {}
+    }
+  ],
+  "object": "list",
+  "has_more": false,
+  "first_id": "batch_abc123",
+  "last_id": "batch_def456"
+}
+```
+
+## Filtering and Monitoring
+
+### Monitor Active Batches
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-***"
+)
+
+# Get all active batches
+batches = client.batches.list(limit=100)
+active = [b for b in batches.data if b.status in ["validating", "in_progress", "finalizing"]]
+
+print(f"Active batches: {len(active)}")
+for batch in active:
+    print(f"  {batch.id}: {batch.status}")
+```
+
+### Find Recent Failures
+
+```python
+# Get batches from the last 24 hours that failed
+import time
+day_ago = int(time.time()) - 86400
+
+batches = client.batches.list(limit=100)
+failed = [
+    b for b in batches.data 
+    if b.status == "failed" and b.created_at > day_ago
+]
+
+print(f"Failed batches in last 24h: {len(failed)}")
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Pagination">
+    When working with large numbers of batches, always use pagination to avoid timeouts and manage memory efficiently.
+  </Accordion>
+  
+  <Accordion title="Filtering Client-Side">
+    The API doesn't support server-side filtering by status or date. Retrieve batches and filter them in your application code.
+  </Accordion>
+  
+  <Accordion title="Monitoring">
+    Regularly poll the list endpoint to monitor batch progress and detect failures early.
+  </Accordion>
+</AccordionGroup>
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Create Batch" icon="plus" href="/api/batches/create">
+    Create a new batch
+  </Card>
+  <Card title="Retrieve Batch" icon="search" href="/api/batches/retrieve">
+    Check specific batch status
+  </Card>
+  <Card title="Cancel Batch" icon="xmark" href="/api/batches/cancel">
+    Cancel a running batch
+  </Card>
+</CardGroup>

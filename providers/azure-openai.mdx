@@ -1,0 +1,435 @@
+---
+title: 'Azure OpenAI'
+description: 'Integrate OpenAI models through Microsoft Azure with enterprise-grade security and compliance'
+---
+
+## Overview
+
+Azure OpenAI Service provides REST API access to OpenAI's models including GPT-4, GPT-3.5-Turbo, and embeddings through Microsoft Azure's enterprise-grade infrastructure with enhanced security, compliance, and regional availability.
+
+**Base URL:** `https://{resourceName}.openai.azure.com/openai`
+
+## Supported Features
+
+- ✅ Chat Completions (including streaming)
+- ✅ Completions (legacy)
+- ✅ Embeddings
+- ✅ Image Generation (DALL-E)
+- ✅ Image Editing
+- ✅ Text-to-Speech (TTS)
+- ✅ Speech-to-Text (Whisper)
+- ✅ Audio Translation
+- ✅ Function Calling & Tools
+- ✅ Vision (GPT-4 Vision)
+- ✅ Batch API
+- ✅ Fine-tuning
+- ✅ Multiple Authentication Methods
+
+## Quick Start
+
+### Basic Configuration
+
+<CodeGroup>
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="azure-openai",
+    api_key="***",                    # Azure API key
+    resource_name="my-resource",      # Your Azure resource name
+    deployment_id="gpt-4-deployment", # Your deployment name
+    api_version="2024-02-15-preview"  # API version
+)
+
+response = client.chat.completions.create(
+    model="gpt-4",  # Not used in Azure, deployment_id is used instead
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "What is Azure OpenAI?"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "azure-openai",
+    apiKey: "***",                      // Azure API key
+    resourceName: "my-resource",        // Your Azure resource name
+    deploymentId: "gpt-4-deployment",   // Your deployment name
+    apiVersion: "2024-02-15-preview"    // API version
+});
+
+const response = await client.chat.completions.create({
+    model: "gpt-4",
+    messages: [
+        {role: "system", content: "You are a helpful assistant."},
+        {role: "user", content: "What is Azure OpenAI?"}
+    ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl https://my-resource.openai.azure.com/openai/deployments/gpt-4-deployment/chat/completions?api-version=2024-02-15-preview \
+  -H "Content-Type: application/json" \
+  -H "api-key: ***" \
+  -d '{
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "What is Azure OpenAI?"}
+    ]
+  }'
+```
+</CodeGroup>
+
+## Configuration Options
+
+### Required Parameters
+
+| Parameter | Description | Example |
+|-----------|-------------|----------|
+| `resource_name` | Azure OpenAI resource name | `my-openai-resource` |
+| `deployment_id` | Deployment name in Azure | `gpt-4-deployment` |
+| `api_version` | Azure API version | `2024-02-15-preview` |
+| `api_key` | Azure API key | `***` |
+
+### Authentication Methods
+
+Azure OpenAI supports multiple authentication methods:
+
+#### 1. API Key (Default)
+
+```python
+client = Portkey(
+    provider="azure-openai",
+    api_key="***",
+    resource_name="my-resource",
+    deployment_id="gpt-4",
+    api_version="2024-02-15-preview"
+)
+```
+
+#### 2. Azure AD Token
+
+```python
+client = Portkey(
+    provider="azure-openai",
+    azure_ad_token="Bearer eyJ0eXAiOiJKV1QiLCJhbGc...",
+    resource_name="my-resource",
+    deployment_id="gpt-4",
+    api_version="2024-02-15-preview"
+)
+```
+
+#### 3. Entra ID (Service Principal)
+
+```python
+client = Portkey(
+    provider="azure-openai",
+    azure_auth_mode="entra",
+    azure_entra_tenant_id="***",
+    azure_entra_client_id="***",
+    azure_entra_client_secret="***",
+    azure_entra_scope="https://cognitiveservices.azure.com/.default",
+    resource_name="my-resource",
+    deployment_id="gpt-4",
+    api_version="2024-02-15-preview"
+)
+```
+
+#### 4. Managed Identity
+
+```python
+client = Portkey(
+    provider="azure-openai",
+    azure_auth_mode="managed",
+    azure_managed_client_id="***",  # Optional
+    azure_entra_scope="https://cognitiveservices.azure.com/",
+    resource_name="my-resource",
+    deployment_id="gpt-4",
+    api_version="2024-02-15-preview"
+)
+```
+
+#### 5. Workload Identity (Kubernetes)
+
+```python
+client = Portkey(
+    provider="azure-openai",
+    azure_auth_mode="workload",
+    azure_workload_client_id="***",
+    azure_entra_scope="https://cognitiveservices.azure.com/.default",
+    resource_name="my-resource",
+    deployment_id="gpt-4",
+    api_version="2024-02-15-preview"
+)
+
+# Requires environment variables:
+# AZURE_AUTHORITY_HOST
+# AZURE_TENANT_ID
+# AZURE_FEDERATED_TOKEN_FILE
+```
+
+## API Versions
+
+Azure OpenAI uses API versions for versioning. Common versions:
+
+| API Version | Features | Status |
+|-------------|----------|--------|
+| `2024-02-15-preview` | Latest features, GPT-4 Turbo | Preview |
+| `2023-12-01-preview` | GPT-4 Vision, DALL-E 3 | Preview |
+| `2023-05-15` | Stable release | GA |
+| `v1` | OpenAI-compatible | Special |
+
+<Info>
+  Use `api_version="v1"` for OpenAI-compatible endpoints without deployment IDs.
+</Info>
+
+## Available Deployments
+
+You must create deployments in Azure before using them:
+
+| Model | Recommended Deployment Name | Capabilities |
+|-------|----------------------------|---------------|
+| GPT-4 | `gpt-4` | Advanced reasoning |
+| GPT-4 Turbo | `gpt-4-turbo` | 128K context |
+| GPT-3.5 Turbo | `gpt-35-turbo` | Fast, cost-effective |
+| text-embedding-ada-002 | `text-embedding-ada-002` | Embeddings |
+| DALL-E 3 | `dall-e-3` | Image generation |
+| Whisper | `whisper` | Speech-to-text |
+
+## Advanced Features
+
+### Streaming
+
+```python
+stream = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Count to 5"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+### Function Calling
+
+```python
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get weather information",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string"}
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "What's the weather in Seattle?"}],
+    tools=tools
+)
+```
+
+### Vision
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4-vision",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What's in this image?"},
+            {
+                "type": "image_url",
+                "image_url": {"url": "https://example.com/image.jpg"}
+            }
+        ]
+    }]
+)
+```
+
+### Embeddings
+
+```python
+response = client.embeddings.create(
+    model="text-embedding-ada-002",
+    input="Azure OpenAI provides enterprise-grade AI"
+)
+
+embedding = response.data[0].embedding
+```
+
+### Image Generation
+
+```python
+response = client.images.generate(
+    model="dall-e-3",
+    prompt="A futuristic datacenter in the clouds",
+    size="1024x1024",
+    quality="hd"
+)
+
+image_url = response.data[0].url
+```
+
+## Multi-Region Configuration
+
+Load balance across multiple Azure regions:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "provider": "azure-openai",
+            "api_key": "***",
+            "resource_name": "eastus-resource",
+            "deployment_id": "gpt-4",
+            "api_version": "2024-02-15-preview",
+            "weight": 0.5
+        },
+        {
+            "provider": "azure-openai",
+            "api_key": "***",
+            "resource_name": "westus-resource",
+            "deployment_id": "gpt-4",
+            "api_version": "2024-02-15-preview",
+            "weight": 0.5
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Fallback to OpenAI
+
+Fallback to standard OpenAI if Azure is unavailable:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {
+            "provider": "azure-openai",
+            "api_key": "***",
+            "resource_name": "my-resource",
+            "deployment_id": "gpt-4",
+            "api_version": "2024-02-15-preview"
+        },
+        {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "override_params": {"model": "gpt-4"}
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Error Handling
+
+```python
+from portkey_ai.exceptions import (
+    RateLimitError,
+    APIError,
+    AuthenticationError
+)
+
+try:
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+except RateLimitError as e:
+    print(f"Rate limit: {e}")
+except AuthenticationError as e:
+    print(f"Auth error: {e}")
+except APIError as e:
+    print(f"API error: {e}")
+```
+
+## Key Differences from OpenAI
+
+| Aspect | OpenAI | Azure OpenAI |
+|--------|--------|---------------|
+| Authentication | API key | API key, AD token, Managed Identity |
+| Endpoint | Fixed | Custom resource name |
+| Model Specification | `model` parameter | `deployment_id` |
+| API Versioning | Not required | Required `api_version` |
+| Regional | Global | Multi-region support |
+| Compliance | Standard | Enterprise (HIPAA, SOC 2, etc.) |
+| Data Location | US | Choose your region |
+
+## Request URL Structure
+
+```
+https://{resource_name}.openai.azure.com/openai/deployments/{deployment_id}/{endpoint}?api-version={api_version}
+```
+
+Example:
+```
+https://my-resource.openai.azure.com/openai/deployments/gpt-4/chat/completions?api-version=2024-02-15-preview
+```
+
+## Best Practices
+
+1. **Use Managed Identity** - Most secure for Azure-hosted applications
+2. **Deploy to multiple regions** - Better availability and latency
+3. **Set appropriate api_version** - Use stable versions for production
+4. **Monitor quota limits** - Azure has per-deployment quotas
+5. **Use private endpoints** - Enhanced security for enterprise
+6. **Implement retry logic** - Handle transient failures
+7. **Cache responses** - Reduce costs and latency
+
+## Enterprise Features
+
+- **Private Endpoints**: Connect via Azure Private Link
+- **Customer Managed Keys**: Bring your own encryption keys
+- **Virtual Networks**: Restrict access to your VNet
+- **Managed Identity**: Eliminate credential management
+- **Azure Monitor**: Full observability integration
+- **Compliance**: HIPAA, SOC 2, ISO 27001, GDPR
+- **Data Residency**: Keep data in your region
+
+## Pricing
+
+Azure OpenAI pricing is similar to OpenAI but billed through Azure:
+
+<Card title="Azure OpenAI Pricing" icon="dollar-sign" href="https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/">
+  View Azure OpenAI Service pricing
+</Card>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="OpenAI" icon="openai" href="/providers/openai">
+    Standard OpenAI integration
+  </Card>
+  <Card title="Load Balancing" icon="scale-balanced" href="/essentials/load-balancing">
+    Multi-region load balancing
+  </Card>
+  <Card title="Fallbacks" icon="arrows-rotate" href="/essentials/fallbacks">
+    Fallback configurations
+  </Card>
+  <Card title="Enterprise Deployment" icon="building" href="/deployment/enterprise">
+    Enterprise deployment guide
+  </Card>
+</CardGroup>

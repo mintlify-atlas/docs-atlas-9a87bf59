@@ -1,0 +1,365 @@
+---
+title: 'Together AI'
+description: 'Access 100+ open-source models including Llama, Mixtral, and Qwen with fast inference'
+---
+
+## Overview
+
+Together AI provides access to 100+ open-source AI models with blazing-fast inference, competitive pricing, and support for the latest community models. Perfect for developers who want to leverage open-source models at scale.
+
+**Base URL:** `https://api.together.xyz`
+
+## Supported Features
+
+- ✅ Chat Completions
+- ✅ Completions
+- ✅ Streaming
+- ✅ Embeddings
+- ✅ Function Calling
+- ✅ Vision (select models)
+- ✅ Image Generation
+- ❌ Fine-tuning (via Together platform)
+
+## Quick Start
+
+### Chat Completions
+
+<CodeGroup>
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="together-ai",
+    Authorization="***"  # Your Together AI API key
+)
+
+response = client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+    messages=[
+        {"role": "user", "content": "Explain open-source AI models"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "together-ai",
+    Authorization: "***"  // Your Together AI API key
+});
+
+const response = await client.chat.completions.create({
+    model: "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+    messages: [
+        {role: "user", content: "Explain open-source AI models"}
+    ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: together-ai" \
+  -H "Authorization: Bearer ***" \
+  -d '{
+    "model": "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+    "messages": [
+      {"role": "user", "content": "Explain open-source AI models"}
+    ]
+  }'
+```
+</CodeGroup>
+
+### Streaming
+
+```python
+stream = client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+    messages=[{"role": "user", "content": "Write a story about AI"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+## Popular Models
+
+### Meta Llama
+
+| Model | Context | Description |
+|-------|---------|-------------|
+| `meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo` | 130K | Largest Llama 3.1 |
+| `meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo` | 130K | Efficient Llama 3.1 |
+| `meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo` | 130K | Fast, compact |
+| `meta-llama/Llama-3.3-70B-Instruct-Turbo` | 130K | Latest Llama 3.3 |
+| `meta-llama/Llama-Vision-Free` | 128K | Vision-enabled |
+
+### Mistral & Mixtral
+
+| Model | Context | Description |
+|-------|---------|-------------|
+| `mistralai/Mixtral-8x22B-Instruct-v0.1` | 64K | Large MoE |
+| `mistralai/Mixtral-8x7B-Instruct-v0.1` | 32K | Efficient MoE |
+| `mistralai/Mistral-7B-Instruct-v0.3` | 32K | Compact model |
+
+### Qwen
+
+| Model | Context | Description |
+|-------|---------|-------------|
+| `Qwen/Qwen2.5-72B-Instruct-Turbo` | 32K | Latest Qwen |
+| `Qwen/Qwen2.5-7B-Instruct-Turbo` | 32K | Fast inference |
+| `Qwen/QwQ-32B-Preview` | 32K | Reasoning model |
+
+### Image Generation
+
+| Model | Type | Description |
+|-------|------|-------------|
+| `black-forest-labs/FLUX.1-schnell` | Image | Fast FLUX |
+| `stabilityai/stable-diffusion-xl-base-1.0` | Image | SDXL |
+
+### Embeddings
+
+| Model | Dimensions | Description |
+|-------|-----------|-------------|
+| `togethercomputer/m2-bert-80M-8k-retrieval` | 768 | Fast embeddings |
+| `BAAI/bge-large-en-v1.5` | 1024 | High quality |
+
+<Note>
+  **Together AI excels at:**
+  - **Open-source models** - Access 100+ community models
+  - **Fast inference** - Optimized infrastructure
+  - **Latest models** - Quick addition of new releases
+  - **Cost-effective** - Competitive pricing
+  - **Developer-friendly** - Simple API, great docs
+</Note>
+
+## Configuration Options
+
+```python
+client = Portkey(
+    provider="together-ai",
+    Authorization="***"  # Bearer token
+)
+```
+
+| Header | Description | Required |
+|--------|-------------|----------|
+| `Authorization` | Together AI API key | Yes |
+
+## Advanced Features
+
+### Function Calling
+
+```python
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_stock_price",
+            "description": "Get current stock price",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "Stock symbol"
+                    }
+                },
+                "required": ["symbol"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+    messages=[{"role": "user", "content": "What's the price of AAPL?"}],
+    tools=tools
+)
+```
+
+### Vision Models
+
+```python
+response = client.chat.completions.create(
+    model="meta-llama/Llama-Vision-Free",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What's in this image?"},
+            {
+                "type": "image_url",
+                "image_url": {"url": "https://example.com/image.jpg"}
+            }
+        ]
+    }]
+)
+```
+
+### Image Generation
+
+```python
+response = client.images.generate(
+    model="black-forest-labs/FLUX.1-schnell",
+    prompt="A futuristic city with flying cars",
+    n=1,
+    size="1024x1024"
+)
+
+image_url = response.data[0].url
+print(f"Generated: {image_url}")
+```
+
+### Embeddings
+
+```python
+response = client.embeddings.create(
+    model="togethercomputer/m2-bert-80M-8k-retrieval",
+    input="Together AI provides fast inference for open models"
+)
+
+embedding = response.data[0].embedding
+print(f"Dimensions: {len(embedding)}")
+```
+
+### Completions (Legacy)
+
+```python
+response = client.completions.create(
+    model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+    prompt="Complete this sentence: Open source AI is",
+    max_tokens=50
+)
+
+print(response.choices[0].text)
+```
+
+## Fallback Configuration
+
+Fallback to OpenAI:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {
+            "provider": "together-ai",
+            "api_key": "***",
+            "override_params": {"model": "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"}
+        },
+        {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "override_params": {"model": "gpt-4o"}
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Load Balancing
+
+Balance across different Llama models:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "provider": "together-ai",
+            "api_key": "***",
+            "override_params": {"model": "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"},
+            "weight": 0.2
+        },
+        {
+            "provider": "together-ai",
+            "api_key": "***",
+            "override_params": {"model": "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo"},
+            "weight": 0.8
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Error Handling
+
+```python
+from portkey_ai.exceptions import (
+    RateLimitError,
+    APIError,
+    AuthenticationError
+)
+
+try:
+    response = client.chat.completions.create(
+        model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+except RateLimitError as e:
+    print(f"Rate limit: {e}")
+except AuthenticationError as e:
+    print(f"Invalid API key: {e}")
+except APIError as e:
+    print(f"API error: {e}")
+```
+
+## Best Practices
+
+1. **Choose right model size** - Balance cost vs capability
+2. **Use Turbo models** - Optimized for speed
+3. **Enable streaming** - Better user experience
+4. **Leverage function calling** - Available on many models
+5. **Try vision models** - For multimodal tasks
+6. **Use embeddings** - For semantic search
+7. **Monitor costs** - Different models have different pricing
+8. **Test models** - Performance varies by use case
+
+## Model Categories
+
+### By Size
+
+- **Large (100B+)**: Best quality, higher cost
+- **Medium (30-100B)**: Balanced performance
+- **Small (7-30B)**: Fast, cost-effective
+
+### By Type
+
+- **Chat/Instruct**: Conversational models
+- **Code**: Specialized for coding
+- **Vision**: Multimodal capabilities
+- **MoE**: Mixture of Experts for efficiency
+
+## Pricing
+
+Together AI offers competitive pricing for open models:
+
+<Card title="Together AI Pricing" icon="dollar-sign" href="https://portkey.ai/models?provider=together-ai">
+  View detailed pricing for all Together AI models
+</Card>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Anyscale" icon="server" href="/providers/anyscale">
+    Another open models platform
+  </Card>
+  <Card title="Groq" icon="bolt" href="/providers/groq">
+    Ultra-fast inference
+  </Card>
+  <Card title="Function Calling" icon="function" href="/essentials/function-calling">
+    Advanced function calling
+  </Card>
+  <Card title="Load Balancing" icon="scale-balanced" href="/essentials/load-balancing">
+    Balance across models
+  </Card>
+</CardGroup>

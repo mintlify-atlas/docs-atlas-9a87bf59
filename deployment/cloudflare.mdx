@@ -1,0 +1,413 @@
+---
+title: Cloudflare Workers Deployment
+description: Deploy Portkey AI Gateway to Cloudflare's edge network
+---
+
+Deploy the Portkey AI Gateway to Cloudflare Workers for global distribution with sub-millisecond latency from 300+ data centers worldwide.
+
+## Overview
+
+Cloudflare Workers provides:
+
+- **Global Edge Network** - Deployed to 300+ cities worldwide
+- **Zero Cold Starts** - Instant response times
+- **Auto-scaling** - Handles any traffic volume
+- **Built-in Security** - DDoS protection and WAF
+- **Generous Free Tier** - 100,000 requests/day
+
+## Prerequisites
+
+- [Cloudflare account](https://dash.cloudflare.com/sign-up)
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) installed
+- Node.js 18+ installed
+
+## Quick Deployment
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone the Portkey AI Gateway repository:
+    ```bash
+    git clone https://github.com/portkey-ai/gateway
+    cd gateway
+    ```
+  </Step>
+  
+  <Step title="Install dependencies">
+    Install the required npm packages:
+    ```bash
+    npm install
+    ```
+  </Step>
+  
+  <Step title="Authenticate with Cloudflare">
+    Login to your Cloudflare account via Wrangler:
+    ```bash
+    npx wrangler login
+    ```
+    
+    This opens a browser window for authentication.
+  </Step>
+  
+  <Step title="Deploy to Cloudflare">
+    Deploy the gateway:
+    ```bash
+    npm run deploy
+    ```
+    
+    Or directly with Wrangler:
+    ```bash
+    wrangler deploy --minify src/index.ts
+    ```
+  </Step>
+</Steps>
+
+After deployment, you'll receive a URL like `https://rubeus.YOUR_SUBDOMAIN.workers.dev`.
+
+## Configuration
+
+### Wrangler Configuration
+
+The gateway includes a `wrangler.toml` configuration file:
+
+```toml wrangler.toml
+name = "rubeus"
+compatibility_date = "2024-12-05"
+main = "src/index.ts"
+compatibility_flags = [ "nodejs_compat" ]
+
+[vars]
+ENVIRONMENT = 'dev'
+CUSTOM_HEADERS_TO_IGNORE = []
+
+#
+# Configuration for STAGING environment
+#
+[env.staging]
+name = "rubeus-dev"
+
+[env.staging.vars]
+ENVIRONMENT = 'staging'
+CUSTOM_HEADERS_TO_IGNORE = []
+
+#
+# Configuration for PRODUCTION environment
+#
+[env.production]
+name = "rubeus"
+logpush = true
+
+[env.production.vars]
+ENVIRONMENT = 'production'
+CUSTOM_HEADERS_TO_IGNORE = []
+```
+
+### Environment Variables
+
+Set environment variables using Wrangler:
+
+```bash
+# Set a variable
+wrangler secret put MY_SECRET
+
+# List secrets
+wrangler secret list
+
+# Delete a secret
+wrangler secret delete MY_SECRET
+```
+
+### Deployment Environments
+
+Deploy to different environments:
+
+<CodeGroup>
+```bash Development
+npm run dev
+```
+
+```bash Staging
+wrangler deploy --env staging
+```
+
+```bash Production
+wrangler deploy --env production
+```
+</CodeGroup>
+
+## Custom Domain
+
+Add a custom domain to your Worker:
+
+<Steps>
+  <Step title="Add domain in Cloudflare Dashboard">
+    1. Navigate to Workers & Pages
+    2. Select your Worker
+    3. Go to Settings → Triggers
+    4. Click "Add Custom Domain"
+  </Step>
+  
+  <Step title="Configure DNS">
+    Cloudflare automatically configures DNS for domains in your account.
+  </Step>
+  
+  <Step title="Verify deployment">
+    Access your gateway at your custom domain:
+    ```bash
+    curl https://gateway.yourdomain.com/health
+    ```
+  </Step>
+</Steps>
+
+### Using Wrangler
+
+Add domains via Wrangler:
+
+```bash
+wrangler domains add gateway.yourdomain.com
+```
+
+## Development
+
+### Local Development
+
+Run the gateway locally with Wrangler:
+
+```bash
+npm run dev
+```
+
+Or directly:
+
+```bash
+wrangler dev src/index.ts
+```
+
+The local server runs at `http://localhost:8787`.
+
+### Development with Node.js
+
+For faster iteration during development:
+
+```bash
+npm run dev:node
+```
+
+This uses Node.js instead of the Cloudflare Workers runtime.
+
+## Bindings
+
+### KV Namespace
+
+Add KV storage for caching:
+
+```toml wrangler.toml
+[[kv_namespaces]]
+binding = "CACHE"
+id = "your_kv_namespace_id"
+preview_id = "your_preview_kv_namespace_id"
+```
+
+Create a KV namespace:
+
+```bash
+wrangler kv:namespace create "CACHE"
+wrangler kv:namespace create "CACHE" --preview
+```
+
+### R2 Storage
+
+Add R2 buckets for object storage:
+
+```toml wrangler.toml
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "portkey-gateway-data"
+```
+
+### D1 Database
+
+Add D1 for SQL storage:
+
+```toml wrangler.toml
+[[d1_databases]]
+binding = "DB"
+database_name = "portkey-gateway-db"
+database_id = "your_database_id"
+```
+
+## Monitoring and Logs
+
+### View Logs
+
+Stream real-time logs:
+
+```bash
+wrangler tail
+```
+
+With filters:
+
+```bash
+# Filter by status
+wrangler tail --status error
+
+# Filter by sampling rate
+wrangler tail --sampling-rate 0.5
+```
+
+### Analytics
+
+View analytics in the Cloudflare dashboard:
+
+1. Navigate to Workers & Pages
+2. Select your Worker
+3. View the Analytics tab
+
+### Enable Logpush
+
+For production environments, enable Logpush in `wrangler.toml`:
+
+```toml
+[env.production]
+logpush = true
+```
+
+Configure destinations in the Cloudflare dashboard.
+
+## Resource Limits
+
+### Free Tier
+
+- 100,000 requests/day
+- 10ms CPU time per request
+- 128 MB memory
+
+### Paid Plans
+
+- Unlimited requests ($0.50 per million)
+- 50ms CPU time per request
+- 128 MB memory
+
+### Best Practices
+
+- Use KV for caching to reduce compute time
+- Minimize external API calls
+- Use streaming responses for large payloads
+- Implement proper error handling
+
+## Deployment Strategies
+
+### Blue-Green Deployment
+
+Deploy to a staging environment first:
+
+```bash
+# Deploy to staging
+wrangler deploy --env staging
+
+# Test staging
+curl https://rubeus-dev.YOUR_SUBDOMAIN.workers.dev/health
+
+# Deploy to production
+wrangler deploy --env production
+```
+
+### Gradual Rollout
+
+Use Cloudflare Workers' percentage-based routing for gradual rollouts:
+
+1. Deploy new version with a different name
+2. Configure traffic splitting in the dashboard
+3. Gradually increase traffic to the new version
+
+## CI/CD Integration
+
+### GitHub Actions
+
+Create `.github/workflows/deploy.yml`:
+
+```yaml deploy.yml
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          environment: 'production'
+```
+
+### GitLab CI
+
+Create `.gitlab-ci.yml`:
+
+```yaml .gitlab-ci.yml
+deploy:
+  image: node:20
+  script:
+    - npm install
+    - npm install -g wrangler
+    - wrangler deploy --env production
+  only:
+    - main
+  variables:
+    CLOUDFLARE_API_TOKEN: $CLOUDFLARE_API_TOKEN
+```
+
+## Troubleshooting
+
+### Build Errors
+
+If you encounter build errors:
+
+```bash
+# Clear node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+
+# Try building locally first
+npm run build
+```
+
+### Authentication Issues
+
+Re-authenticate with Wrangler:
+
+```bash
+wrangler logout
+wrangler login
+```
+
+### CPU Time Exceeded
+
+Optimize your code or upgrade to a paid plan for longer CPU time limits.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Cloudflare Workers Docs" icon="book" href="https://developers.cloudflare.com/workers/">
+    Learn more about Cloudflare Workers
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Configure the gateway for your needs
+  </Card>
+</CardGroup>

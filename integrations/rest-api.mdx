@@ -1,0 +1,616 @@
+---
+title: "REST API"
+description: "Use Portkey AI Gateway directly via HTTP REST API for any programming language"
+---
+
+Portkey's REST API provides direct HTTP access to 250+ LLMs with production-grade routing, fallbacks, and observability. Use it from any programming language or tool that can make HTTP requests.
+
+## Overview
+
+The REST API offers:
+
+- **Universal Access**: Use from any language (Python, Go, Ruby, PHP, etc.)
+- **OpenAI-Compatible**: Same endpoints and request/response format
+- **250+ LLMs**: Access any provider through unified API
+- **Simple Integration**: Just HTTP headers and JSON payloads
+- **Production Features**: Fallbacks, caching, retries, and guardrails
+
+## Base URL
+
+```
+https://api.portkey.ai/v1
+```
+
+For self-hosted gateway:
+```
+http://localhost:8787/v1
+```
+
+## Authentication
+
+Portkey uses HTTP headers for authentication and configuration:
+
+### Required Headers
+
+```bash
+x-portkey-api-key: your-portkey-api-key
+```
+
+### Provider Authentication
+
+Choose one method:
+
+<CodeGroup>
+```bash Virtual Key (Recommended)
+x-portkey-virtual-key: your-virtual-key
+```
+
+```bash Provider + Authorization
+x-portkey-provider: openai
+Authorization: Bearer your-provider-api-key
+```
+</CodeGroup>
+
+## Quick Start
+
+<Steps>
+  <Step title="Get Your API Keys">
+    Sign up at [Portkey](https://app.portkey.ai/) and get your API key. Add provider keys as Virtual Keys.
+  </Step>
+  
+  <Step title="Make Your First Request">
+    ```bash
+    curl https://api.portkey.ai/v1/chat/completions \
+      -H "Content-Type: application/json" \
+      -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+      -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY" \
+      -d '{
+        "model": "gpt-4",
+        "messages": [{"role": "user", "content": "Hello!"}]
+      }'
+    ```
+  </Step>
+</Steps>
+
+## Chat Completions
+
+### Basic Request
+
+```bash
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer YOUR_OPENAI_API_KEY" \
+  -d '{
+    "model": "gpt-4",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Explain quantum computing."}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 500
+  }'
+```
+
+### Response
+
+```json
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1677652288,
+  "model": "gpt-4",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Quantum computing is..."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 100,
+    "total_tokens": 120
+  }
+}
+```
+
+### Streaming
+
+Enable streaming with `"stream": true`:
+
+```bash
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY" \
+  -d '{
+    "model": "gpt-4",
+    "messages": [{"role": "user", "content": "Write a story"}],
+    "stream": true
+  }'
+```
+
+Response (Server-Sent Events):
+```
+data: {"id":"1","choices":[{"delta":{"content":"Once"}}]}
+
+data: {"id":"1","choices":[{"delta":{"content":" upon"}}]}
+
+data: {"id":"1","choices":[{"delta":{"content":" a"}}]}
+
+data: [DONE]
+```
+
+## Switching Providers
+
+Change providers by updating the header:
+
+<CodeGroup>
+```bash OpenAI
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer YOUR_OPENAI_KEY" \
+  -d '{"model": "gpt-4", "messages": [...]}'
+```
+
+```bash Anthropic
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-provider: anthropic" \
+  -H "Authorization: Bearer YOUR_ANTHROPIC_KEY" \
+  -d '{"model": "claude-3-opus-20240229", "messages": [...]}'
+```
+
+```bash Google Gemini
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-provider: google" \
+  -H "Authorization: Bearer YOUR_GOOGLE_KEY" \
+  -d '{"model": "gemini-1.5-pro", "messages": [...]}'
+```
+
+```bash Azure OpenAI
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-provider: azure-openai" \
+  -H "Authorization: Bearer YOUR_AZURE_KEY" \
+  -H "x-portkey-azure-resource-name: YOUR_RESOURCE" \
+  -H "x-portkey-azure-deployment-id: YOUR_DEPLOYMENT" \
+  -d '{"model": "gpt-4", "messages": [...]}'
+```
+</CodeGroup>
+
+## Advanced Routing
+
+### Using Configs
+
+Pass a config object via header:
+
+```bash
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-config: '{"strategy":{"mode":"fallback"},"targets":[{"virtual_key":"openai-key"},{"virtual_key":"anthropic-key"}]}' " \
+  -d '{"model": "gpt-4", "messages": [...]}'
+```
+
+Or use a saved config ID:
+
+```bash
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-config: pc-config-abc123" \
+  -d '{"model": "gpt-4", "messages": [...]}'
+```
+
+### Fallback Example
+
+```bash
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H 'x-portkey-config: {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+      {"virtual_key": "openai-virtual-key"},
+      {"virtual_key": "anthropic-virtual-key"}
+    ]
+  }' \
+  -d '{"model": "gpt-4", "messages": [...]}'
+```
+
+### Load Balancing
+
+```bash
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H 'x-portkey-config: {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+      {"virtual_key": "openai-key-1", "weight": 0.7},
+      {"virtual_key": "openai-key-2", "weight": 0.3}
+    ]
+  }' \
+  -d '{"model": "gpt-4", "messages": [...]}'
+```
+
+### Retries
+
+```bash
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY" \
+  -H 'x-portkey-config: {
+    "retry": {
+      "attempts": 5,
+      "on_status_codes": [429, 500, 502, 503]
+    }
+  }' \
+  -d '{"model": "gpt-4", "messages": [...]}'
+```
+
+## Caching
+
+### Simple Caching
+
+```bash
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY" \
+  -H "x-portkey-cache: simple" \
+  -H "x-portkey-cache-force-refresh: false" \
+  -d '{"model": "gpt-4", "messages": [...]}'
+```
+
+### Semantic Caching
+
+```bash
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY" \
+  -H 'x-portkey-config: {
+    "cache": {
+      "mode": "semantic",
+      "max_age": 3600
+    }
+  }' \
+  -d '{"model": "gpt-4", "messages": [...]}'
+```
+
+## Metadata and Tracing
+
+Add custom metadata:
+
+```bash
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY" \
+  -H 'x-portkey-metadata: {"user_id":"user_123","environment":"production"}' \
+  -H "x-portkey-trace-id: request-001" \
+  -d '{"model": "gpt-4", "messages": [...]}'
+```
+
+## Other Endpoints
+
+### Completions (Legacy)
+
+```bash
+curl https://api.portkey.ai/v1/completions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY" \
+  -d '{
+    "model": "gpt-3.5-turbo-instruct",
+    "prompt": "Once upon a time",
+    "max_tokens": 100
+  }'
+```
+
+### Embeddings
+
+```bash
+curl https://api.portkey.ai/v1/embeddings \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY" \
+  -d '{
+    "model": "text-embedding-3-small",
+    "input": "The quick brown fox jumps over the lazy dog"
+  }'
+```
+
+### Image Generation
+
+```bash
+curl https://api.portkey.ai/v1/images/generations \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY" \
+  -d '{
+    "model": "dall-e-3",
+    "prompt": "A serene landscape with mountains",
+    "n": 1,
+    "size": "1024x1024"
+  }'
+```
+
+### Audio Transcription
+
+```bash
+curl https://api.portkey.ai/v1/audio/transcriptions \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY" \
+  -F model="whisper-1" \
+  -F file="@speech.mp3"
+```
+
+### Text to Speech
+
+```bash
+curl https://api.portkey.ai/v1/audio/speech \
+  -H "x-portkey-api-key: YOUR_PORTKEY_API_KEY" \
+  -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY" \
+  -d '{
+    "model": "tts-1",
+    "voice": "alloy",
+    "input": "Hello, this is a test."
+  }' \
+  --output speech.mp3
+```
+
+## Language Examples
+
+### Python (requests)
+
+```python
+import requests
+
+url = "https://api.portkey.ai/v1/chat/completions"
+
+headers = {
+    "Content-Type": "application/json",
+    "x-portkey-api-key": "YOUR_PORTKEY_API_KEY",
+    "x-portkey-virtual-key": "YOUR_VIRTUAL_KEY"
+}
+
+data = {
+    "model": "gpt-4",
+    "messages": [{"role": "user", "content": "Hello!"}]
+}
+
+response = requests.post(url, json=data, headers=headers)
+print(response.json())
+```
+
+### Node.js (fetch)
+
+```javascript
+const response = await fetch('https://api.portkey.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'x-portkey-api-key': 'YOUR_PORTKEY_API_KEY',
+        'x-portkey-virtual-key': 'YOUR_VIRTUAL_KEY'
+    },
+    body: JSON.stringify({
+        model: 'gpt-4',
+        messages: [{role: 'user', content: 'Hello!'}]
+    })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+)
+
+func main() {
+    url := "https://api.portkey.ai/v1/chat/completions"
+    
+    payload := map[string]interface{}{
+        "model": "gpt-4",
+        "messages": []map[string]string{
+            {"role": "user", "content": "Hello!"},
+        },
+    }
+    
+    jsonData, _ := json.Marshal(payload)
+    
+    req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-portkey-api-key", "YOUR_PORTKEY_API_KEY")
+    req.Header.Set("x-portkey-virtual-key", "YOUR_VIRTUAL_KEY")
+    
+    client := &http.Client{}
+    resp, _ := client.Do(req)
+    defer resp.Body.Close()
+    
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    fmt.Println(result)
+}
+```
+
+### Ruby
+
+```ruby
+require 'net/http'
+require 'json'
+
+uri = URI('https://api.portkey.ai/v1/chat/completions')
+
+request = Net::HTTP::Post.new(uri)
+request['Content-Type'] = 'application/json'
+request['x-portkey-api-key'] = 'YOUR_PORTKEY_API_KEY'
+request['x-portkey-virtual-key'] = 'YOUR_VIRTUAL_KEY'
+
+request.body = {
+  model: 'gpt-4',
+  messages: [{role: 'user', content: 'Hello!'}]
+}.to_json
+
+response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+  http.request(request)
+end
+
+puts JSON.parse(response.body)
+```
+
+### PHP
+
+```php
+<?php
+$url = 'https://api.portkey.ai/v1/chat/completions';
+
+$headers = [
+    'Content-Type: application/json',
+    'x-portkey-api-key: YOUR_PORTKEY_API_KEY',
+    'x-portkey-virtual-key: YOUR_VIRTUAL_KEY'
+];
+
+$data = [
+    'model' => 'gpt-4',
+    'messages' => [['role' => 'user', 'content' => 'Hello!']]
+];
+
+$ch = curl_init($url);
+curl_setopt($ch, CURLOPT_POST, 1);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+echo $response;
+?>
+```
+
+## Error Responses
+
+Portkey returns standard HTTP status codes:
+
+```json
+{
+  "error": {
+    "message": "Invalid API key",
+    "type": "invalid_request_error",
+    "code": "invalid_api_key"
+  }
+}
+```
+
+Common status codes:
+- `400` - Bad request
+- `401` - Unauthorized (invalid API key)
+- `429` - Rate limit exceeded
+- `500` - Server error
+- `502` - Bad gateway
+- `503` - Service unavailable
+
+## Headers Reference
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `x-portkey-api-key` | Yes | Your Portkey API key |
+| `x-portkey-virtual-key` | No* | Virtual key for provider |
+| `x-portkey-provider` | No* | Provider name (openai, anthropic, etc) |
+| `Authorization` | No* | Provider API key (with provider header) |
+| `x-portkey-config` | No | Config object or ID |
+| `x-portkey-metadata` | No | Custom metadata JSON |
+| `x-portkey-trace-id` | No | Custom trace ID |
+| `x-portkey-cache` | No | Cache mode (simple/semantic) |
+
+*Either `virtual-key` OR (`provider` + `Authorization`) required
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Virtual Keys">
+    Always use virtual keys instead of raw provider keys for better security:
+    ```bash
+    -H "x-portkey-virtual-key: YOUR_VIRTUAL_KEY"
+    ```
+  </Accordion>
+  
+  <Accordion title="Configure Fallbacks">
+    Set up fallback providers for production reliability:
+    ```json
+    {"strategy": {"mode": "fallback"}, "targets": [...]}
+    ```
+  </Accordion>
+  
+  <Accordion title="Enable Caching">
+    Use caching to reduce costs and improve latency:
+    ```json
+    {"cache": {"mode": "semantic", "max_age": 3600}}
+    ```
+  </Accordion>
+  
+  <Accordion title="Add Metadata">
+    Always include metadata for debugging and analytics:
+    ```json
+    {"user_id": "user_123", "environment": "production"}
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle Errors">
+    Implement proper error handling for all status codes.
+  </Accordion>
+</AccordionGroup>
+
+## Complete Production Example
+
+```bash
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-api-key: $PORTKEY_API_KEY" \
+  -H 'x-portkey-config: {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+      {"virtual_key": "openai-key"},
+      {"virtual_key": "anthropic-key"}
+    ],
+    "retry": {"attempts": 3},
+    "cache": {"mode": "semantic", "max_age": 3600}
+  }' \
+  -H 'x-portkey-metadata: {
+    "user_id": "user_123",
+    "environment": "production",
+    "service": "chat-api"
+  }' \
+  -H "x-portkey-trace-id: req-$(date +%s)" \
+  -d '{
+    "model": "gpt-4",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "How can I help you today?"}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 500
+  }'
+```
+
+## Resources
+
+- [API Reference](/api-reference/overview)
+- [Gateway Configs](/concepts/configs)
+- [Supported Providers](/providers/supported-providers)
+- [curl Documentation](https://curl.se/docs/)
+
+<Note>
+  The REST API is perfect for integrating Portkey into any application, regardless of programming language.
+</Note>

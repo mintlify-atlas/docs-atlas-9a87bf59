@@ -1,0 +1,418 @@
+---
+title: 'DeepInfra'
+description: 'Access 100+ models with cost-effective inference and fast deployment'
+---
+
+## Overview
+
+DeepInfra provides access to 100+ open-source and proprietary AI models with cost-effective inference, serverless deployment, and pay-as-you-go pricing. Perfect for developers seeking affordable AI at scale.
+
+**Base URL:** `https://api.deepinfra.com/v1/openai`
+
+## Supported Features
+
+- ✅ Chat Completions
+- ✅ Streaming
+- ✅ Vision (select models)
+- ✅ Function Calling (select models)
+- ❌ Embeddings (via separate API)
+- ❌ Image Generation (via separate API)
+- ❌ Fine-tuning
+
+## Quick Start
+
+### Chat Completions
+
+<CodeGroup>
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="deepinfra",
+    Authorization="***"  # Your DeepInfra API key
+)
+
+response = client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-70B-Instruct",
+    messages=[
+        {"role": "user", "content": "Explain DeepInfra's advantages"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "deepinfra",
+    Authorization: "***"  // Your DeepInfra API key
+});
+
+const response = await client.chat.completions.create({
+    model: "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    messages: [
+        {role: "user", content: "Explain DeepInfra's advantages"}
+    ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: deepinfra" \
+  -H "Authorization: Bearer ***" \
+  -d '{
+    "model": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    "messages": [
+      {"role": "user", "content": "Explain DeepInfra"}
+    ]
+  }'
+```
+</CodeGroup>
+
+### Streaming
+
+```python
+stream = client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-70B-Instruct",
+    messages=[{"role": "user", "content": "Write a short story"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+## Popular Models
+
+### Meta Llama
+
+| Model | Context | Price Tier | Description |
+|-------|---------|-----------|-------------|
+| `meta-llama/Meta-Llama-3.1-405B-Instruct` | 128K | Premium | Largest Llama |
+| `meta-llama/Meta-Llama-3.1-70B-Instruct` | 128K | Mid | Balanced |
+| `meta-llama/Meta-Llama-3.1-8B-Instruct` | 128K | Budget | Fast, cheap |
+| `meta-llama/Llama-3.2-90B-Vision-Instruct` | 128K | Premium | Vision |
+
+### Mistral & Mixtral
+
+| Model | Context | Price Tier |
+|-------|---------|------------|
+| `mistralai/Mixtral-8x22B-Instruct-v0.1` | 64K | Mid |
+| `mistralai/Mixtral-8x7B-Instruct-v0.1` | 32K | Budget |
+| `mistralai/Mistral-7B-Instruct-v0.3` | 32K | Budget |
+
+### Qwen
+
+| Model | Context | Description |
+|-------|---------|-------------|
+| `Qwen/Qwen2.5-72B-Instruct` | 32K | Latest Qwen |
+| `Qwen/Qwen2.5-7B-Instruct` | 32K | Efficient |
+| `Qwen/QwQ-32B-Preview` | 32K | Reasoning |
+
+### Specialized Models
+
+| Model | Type | Use Case |
+|-------|------|----------|
+| `microsoft/WizardLM-2-8x22B` | Code/Chat | Coding tasks |
+| `cognitivecomputations/dolphin-2.6-mixtral-8x7b` | Chat | Uncensored |
+| `lizpreciatior/lzlv_70b_fp16_hf` | Roleplay | Creative |
+
+<Note>
+  **DeepInfra excels at:**
+  - **Cost-effectiveness** - Up to 10x cheaper than alternatives
+  - **Model variety** - 100+ models available
+  - **Serverless** - No infrastructure management
+  - **Pay-as-you-go** - No minimum commitment
+  - **Fast deployment** - Instant access to models
+</Note>
+
+## Configuration Options
+
+```python
+client = Portkey(
+    provider="deepinfra",
+    Authorization="***"  # Bearer token
+)
+```
+
+| Header | Description | Required |
+|--------|-------------|----------|
+| `Authorization` | DeepInfra API key | Yes |
+
+## Advanced Features
+
+### System Messages
+
+```python
+response = client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-70B-Instruct",
+    messages=[
+        {
+            "role": "system",
+            "content": "You are a helpful coding assistant."
+        },
+        {
+            "role": "user",
+            "content": "Write a Python function to sort a list"
+        }
+    ]
+)
+```
+
+### Temperature and Sampling
+
+```python
+response = client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-70B-Instruct",
+    messages=[{"role": "user", "content": "Generate creative ideas"}],
+    temperature=0.9,      # Higher for creativity
+    top_p=0.95,          # Nucleus sampling
+    max_tokens=500,      # Limit response length
+    frequency_penalty=0.5 # Reduce repetition
+)
+```
+
+### Vision Models
+
+```python
+response = client.chat.completions.create(
+    model="meta-llama/Llama-3.2-90B-Vision-Instruct",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "Describe this image"},
+            {
+                "type": "image_url",
+                "image_url": {"url": "https://example.com/image.jpg"}
+            }
+        ]
+    }]
+)
+```
+
+### Multi-turn Conversations
+
+```python
+conversation = [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "What is machine learning?"},
+    {"role": "assistant", "content": "Machine learning is..."},
+    {"role": "user", "content": "Can you give an example?"}
+]
+
+response = client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-70B-Instruct",
+    messages=conversation
+)
+```
+
+## Cost Optimization
+
+### Choose the Right Model
+
+```python
+# For simple tasks - use 8B (cheapest)
+client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-8B-Instruct",
+    messages=[{"role": "user", "content": "Simple question"}]
+)
+
+# For complex tasks - use 70B (balanced)
+client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-70B-Instruct",
+    messages=[{"role": "user", "content": "Complex reasoning task"}]
+)
+
+# For most complex - use 405B (premium)
+client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-405B-Instruct",
+    messages=[{"role": "user", "content": "Very complex task"}]
+)
+```
+
+### Set Token Limits
+
+```python
+response = client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-70B-Instruct",
+    messages=[{"role": "user", "content": "Brief answer please"}],
+    max_tokens=100  # Control costs by limiting output
+)
+```
+
+## Fallback Configuration
+
+Fallback to OpenAI if needed:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {
+            "provider": "deepinfra",
+            "api_key": "***",
+            "override_params": {"model": "meta-llama/Meta-Llama-3.1-70B-Instruct"}
+        },
+        {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "override_params": {"model": "gpt-4o-mini"}
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Load Balancing
+
+Balance cost vs quality:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "provider": "deepinfra",
+            "api_key": "***",
+            "override_params": {"model": "meta-llama/Meta-Llama-3.1-8B-Instruct"},
+            "weight": 0.7  # 70% to cheap model
+        },
+        {
+            "provider": "deepinfra",
+            "api_key": "***",
+            "override_params": {"model": "meta-llama/Meta-Llama-3.1-70B-Instruct"},
+            "weight": 0.3  # 30% to better model
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Error Handling
+
+```python
+from portkey_ai.exceptions import (
+    RateLimitError,
+    APIError,
+    AuthenticationError
+)
+
+try:
+    response = client.chat.completions.create(
+        model="meta-llama/Meta-Llama-3.1-70B-Instruct",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+except RateLimitError as e:
+    print(f"Rate limit: {e}")
+except AuthenticationError as e:
+    print(f"Invalid API key: {e}")
+except APIError as e:
+    print(f"API error: {e}")
+```
+
+## Best Practices
+
+1. **Start with smaller models** - Test with 8B before using 70B
+2. **Set max_tokens** - Control costs
+3. **Use streaming** - Better UX
+4. **Cache responses** - Reduce API calls
+5. **Monitor costs** - DeepInfra has usage dashboard
+6. **Choose right model** - Balance cost vs quality
+7. **Batch similar requests** - More efficient
+8. **Handle rate limits** - Implement backoff
+
+## Use Cases
+
+### Budget-Conscious Development
+```python
+# Use cheap 8B model for development
+dev_client = Portkey(
+    provider="deepinfra",
+    Authorization="***"
+)
+
+response = dev_client.chat.completions.create(
+    model="meta-llama/Meta-Llama-3.1-8B-Instruct",
+    messages=[{"role": "user", "content": "Test query"}]
+)
+```
+
+### High-Volume Applications
+```python
+# Cost-effective for large scale
+for user_query in user_queries:
+    response = client.chat.completions.create(
+        model="meta-llama/Meta-Llama-3.1-8B-Instruct",
+        messages=[{"role": "user", "content": user_query}],
+        max_tokens=200  # Limit costs
+    )
+```
+
+### A/B Testing Models
+```python
+# Test different models cost-effectively
+models_to_test = [
+    "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    "mistralai/Mixtral-8x7B-Instruct-v0.1"
+]
+
+for model in models_to_test:
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": test_prompt}]
+    )
+    # Compare results
+```
+
+## Rate Limits
+
+- Generous free tier for testing
+- Pay-as-you-go with no minimums
+- Rate limits based on tier
+- Contact DeepInfra for enterprise needs
+
+## Pricing Advantages
+
+DeepInfra typically offers:
+
+- **50-90% cheaper** than major providers
+- **No minimum spend** requirement
+- **Free credits** for new users
+- **Transparent pricing** per token
+
+<Card title="DeepInfra Pricing" icon="dollar-sign" href="https://portkey.ai/models?provider=deepinfra">
+  View detailed pricing for all DeepInfra models
+</Card>
+
+## Getting Started
+
+1. Sign up at [DeepInfra](https://deepinfra.com/)
+2. Get your API key
+3. Start with free credits
+4. Scale as needed
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Together AI" icon="server" href="/providers/together-ai">
+    Alternative open models platform
+  </Card>
+  <Card title="Cost Optimization" icon="dollar-sign" href="/essentials/cost-optimization">
+    Reduce AI costs
+  </Card>
+  <Card title="Load Balancing" icon="scale-balanced" href="/essentials/load-balancing">
+    Balance cost vs quality
+  </Card>
+  <Card title="Caching" icon="database" href="/essentials/caching">
+    Cache for cost savings
+  </Card>
+</CardGroup>

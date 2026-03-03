@@ -1,0 +1,212 @@
+---
+title: "MCP Gateway Quickstart"
+description: "Get started with MCP Gateway in under 10 minutes"
+---
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- Node.js 18+ installed
+- An MCP-compatible client (Claude Desktop, Cursor, or VS Code)
+- At least one MCP server to connect to
+
+## Quick Start
+
+Get your MCP Gateway running in three simple steps.
+
+<Steps>
+  <Step title="Install and run the gateway">
+    Start the Portkey AI Gateway with MCP support:
+    
+    ```bash
+    # Run the gateway locally
+    npx @portkey-ai/gateway
+    ```
+    
+    The gateway will start on `http://localhost:8787` with MCP endpoints available at `/mcp/*`.
+    
+    <Tip>
+      For production deployments, see our [deployment guides](/deployment/overview).
+    </Tip>
+  </Step>
+  
+  <Step title="Configure your MCP servers">
+    Create a configuration file `mcp-config.json` to define your MCP servers:
+    
+    ```json mcp-config.json
+    {
+      "mcpServers": {
+        "filesystem": {
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"],
+          "description": "File system access for workspace"
+        },
+        "github": {
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-github"],
+          "env": {
+            "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+          },
+          "description": "GitHub repository access"
+        }
+      },
+      "auth": {
+        "type": "bearer",
+        "enabled": true
+      }
+    }
+    ```
+    
+    <Note>
+      This configuration defines two MCP servers: one for filesystem access and one for GitHub integration. The gateway will manage authentication and routing to these servers.
+    </Note>
+  </Step>
+  
+  <Step title="Connect your MCP client">
+    Configure your MCP client to use the gateway. For Claude Desktop, update your config file:
+    
+    **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+    
+    **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+    
+    ```json claude_desktop_config.json
+    {
+      "mcpServers": {
+        "portkey-gateway": {
+          "url": "http://localhost:8787/mcp",
+          "transport": "sse",
+          "headers": {
+            "Authorization": "Bearer your-gateway-token"
+          }
+        }
+      }
+    }
+    ```
+    
+    <Info>
+      Replace `your-gateway-token` with a valid authentication token from your gateway instance.
+    </Info>
+  </Step>
+</Steps>
+
+## Verify the Setup
+
+Once configured, verify that your MCP Gateway is working:
+
+1. **Check gateway status**: Visit the gateway console at `http://localhost:8787/public/`
+
+2. **Test server connection**: The gateway will show connected MCP servers and their status
+
+3. **Use tools in your client**: Open Claude Desktop (or your MCP client) and try using the connected tools
+
+<Tip>
+You should see your MCP servers listed as available tools in your client. Try asking Claude to "list available files" to test the filesystem server.
+</Tip>
+
+## View Logs and Monitoring
+
+The gateway automatically logs all MCP interactions:
+
+```bash
+# View real-time logs
+curl http://localhost:8787/mcp/logs
+```
+
+Or visit the gateway console to see:
+- Active connections
+- Tool call history
+- Performance metrics
+- Error logs
+
+## Example: Using the Gateway
+
+Once connected, your MCP client can use tools through the gateway:
+
+**In Claude Desktop:**
+
+```
+You: Can you list the files in my workspace?
+
+Claude: I'll use the filesystem tool to check...
+[Gateway logs: User alice@company.com called filesystem.listFiles]
+
+Claude: Here are the files in your workspace:
+- src/
+- tests/
+- README.md
+- package.json
+```
+
+The gateway automatically:
+- Authenticated the request from alice@company.com
+- Checked that Alice has permission to use the filesystem tool
+- Forwarded the request to the MCP server
+- Logged the complete interaction
+- Returned the response to Claude
+
+## Next Steps
+
+Now that you have MCP Gateway running, explore advanced features:
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/mcp/authentication">
+    Set up SSO and advanced auth methods
+  </Card>
+  
+  <Card title="Access Control" icon="shield" href="/mcp/access-control">
+    Configure granular permissions
+  </Card>
+  
+  <Card title="Production Deployment" icon="server" href="/deployment/overview">
+    Deploy to production environments
+  </Card>
+  
+  <Card title="Monitoring" icon="chart-line" href="/features/observability">
+    Set up monitoring and alerts
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Gateway won't start" icon="circle-exclamation">
+    Check that:
+    - Port 8787 is not already in use
+    - Node.js 18+ is installed
+    - You have proper file permissions
+    
+    Try running with debug logs:
+    ```bash
+    DEBUG=* npx @portkey-ai/gateway
+    ```
+  </Accordion>
+  
+  <Accordion title="Client can't connect to gateway" icon="link-slash">
+    Verify:
+    - Gateway is running and accessible
+    - Client configuration has correct URL
+    - Authentication token is valid
+    - Firewall rules allow connections
+  </Accordion>
+  
+  <Accordion title="MCP servers not responding" icon="server">
+    Check:
+    - Server commands are correct in config
+    - Required environment variables are set
+    - Servers have necessary permissions
+    - Gateway logs for specific error messages
+  </Accordion>
+  
+  <Accordion title="Authentication failures" icon="lock">
+    Common issues:
+    - Token expired or invalid
+    - User doesn't have required permissions
+    - Auth configuration mismatch
+    - Check gateway logs for specific auth errors
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+**Need help?** Join our [Discord community](https://discord.gg/portkey) or check the [GitHub issues](https://github.com/portkey-AI/gateway/issues).
+</Note>

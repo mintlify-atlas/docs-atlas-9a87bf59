@@ -1,0 +1,299 @@
+---
+title: 'Create Embeddings'
+description: 'POST /v1/embeddings - Generate embeddings for text'
+---
+
+## Endpoint
+
+```
+POST /v1/embeddings
+```
+
+Creates an embedding vector representing the input text.
+
+## Request
+
+### Headers
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`
+</ParamField>
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The AI provider to use (e.g., `openai`, `cohere`, `google`)
+</ParamField>
+
+<ParamField header="x-portkey-api-key" type="string" required>
+  Your API key for the specified provider
+</ParamField>
+
+### Body Parameters
+
+<ParamField body="model" type="string" required>
+  The embedding model to use (e.g., `text-embedding-3-small`, `text-embedding-ada-002`)
+</ParamField>
+
+<ParamField body="input" type="string | array" required>
+  The text or array of texts to generate embeddings for
+</ParamField>
+
+<ParamField body="encoding_format" type="string" default="float">
+  Format of the embeddings: `float` or `base64`
+</ParamField>
+
+<ParamField body="dimensions" type="integer">
+  Number of dimensions for the embedding (only supported by some models)
+</ParamField>
+
+<ParamField body="user" type="string">
+  Unique identifier for the end-user
+</ParamField>
+
+## Response
+
+<ResponseField name="object" type="string">
+  Object type, always `list`
+</ResponseField>
+
+<ResponseField name="model" type="string">
+  The model used for embeddings
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of embedding objects
+  
+  <ResponseField name="object" type="string">
+    Object type, always `embedding`
+  </ResponseField>
+  
+  <ResponseField name="embedding" type="array">
+    The embedding vector (array of floats)
+  </ResponseField>
+  
+  <ResponseField name="index" type="integer">
+    Index of the embedding in the input array
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="usage" type="object">
+  Token usage information
+  
+  <ResponseField name="prompt_tokens" type="integer">
+    Number of tokens in the input
+  </ResponseField>
+  
+  <ResponseField name="total_tokens" type="integer">
+    Total tokens used
+  </ResponseField>
+</ResponseField>
+
+## Examples
+
+### Basic Embedding Request
+
+```bash
+curl http://localhost:8787/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "model": "text-embedding-3-small",
+    "input": "The quick brown fox jumps over the lazy dog"
+  }'
+```
+
+### Response
+
+```json
+{
+  "object": "list",
+  "model": "text-embedding-3-small",
+  "data": [
+    {
+      "object": "embedding",
+      "embedding": [
+        0.0023064255,
+        -0.009327292,
+        -0.0028842222,
+        ...
+      ],
+      "index": 0
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "total_tokens": 10
+  }
+}
+```
+
+### Python SDK
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.embeddings.create(
+    model="text-embedding-3-small",
+    input="The quick brown fox jumps over the lazy dog"
+)
+
+embedding = response.data[0].embedding
+print(f"Embedding dimensions: {len(embedding)}")
+print(f"First 5 values: {embedding[:5]}")
+```
+
+### JavaScript SDK
+
+```javascript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+  provider: 'openai',
+  Authorization: 'sk-...'
+});
+
+const response = await client.embeddings.create({
+  model: 'text-embedding-3-small',
+  input: 'The quick brown fox jumps over the lazy dog'
+});
+
+const embedding = response.data[0].embedding;
+console.log(`Embedding dimensions: ${embedding.length}`);
+console.log(`First 5 values: ${embedding.slice(0, 5)}`);
+```
+
+### Batch Embeddings
+
+```bash
+curl http://localhost:8787/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "model": "text-embedding-3-small",
+    "input": [
+      "First document to embed",
+      "Second document to embed",
+      "Third document to embed"
+    ]
+  }'
+```
+
+### Python Batch Example
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+texts = [
+    "First document to embed",
+    "Second document to embed",
+    "Third document to embed"
+]
+
+response = client.embeddings.create(
+    model="text-embedding-3-small",
+    input=texts
+)
+
+for i, embedding_obj in enumerate(response.data):
+    print(f"Document {i+1}: {len(embedding_obj.embedding)} dimensions")
+```
+
+### Using Cohere
+
+```bash
+curl http://localhost:8787/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: cohere" \
+  -H "x-portkey-api-key: your-cohere-api-key" \
+  -d '{
+    "model": "embed-english-v3.0",
+    "input": "Embed this text"
+  }'
+```
+
+### Custom Dimensions
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.embeddings.create(
+    model="text-embedding-3-small",
+    input="Embed this text",
+    dimensions=512  # Reduce from default 1536 to 512
+)
+
+print(f"Dimensions: {len(response.data[0].embedding)}")
+```
+
+### Similarity Search Example
+
+```python
+import numpy as np
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+# Create embeddings
+documents = [
+    "The cat sat on the mat",
+    "The dog played in the park",
+    "A feline rested on a rug"
+]
+
+response = client.embeddings.create(
+    model="text-embedding-3-small",
+    input=documents
+)
+
+embeddings = [item.embedding for item in response.data]
+
+# Compare similarity
+similarity = cosine_similarity(embeddings[0], embeddings[2])
+print(f"Similarity between doc 1 and 3: {similarity:.4f}")
+```
+
+## Supported Models
+
+### OpenAI
+- `text-embedding-3-small` - 1536 dimensions (default)
+- `text-embedding-3-large` - 3072 dimensions
+- `text-embedding-ada-002` - 1536 dimensions (legacy)
+
+### Cohere
+- `embed-english-v3.0` - English embeddings
+- `embed-multilingual-v3.0` - Multilingual embeddings
+- `embed-english-light-v3.0` - Lightweight English
+
+### Google
+- `text-embedding-004` - Google's text embeddings
+- `text-multilingual-embedding-002` - Multilingual
+
+## Use Cases
+
+- **Semantic Search**: Find similar documents or passages
+- **Clustering**: Group similar texts together
+- **Recommendations**: Recommend similar content
+- **Classification**: Use embeddings as features for ML models
+- **Anomaly Detection**: Identify outliers in text data

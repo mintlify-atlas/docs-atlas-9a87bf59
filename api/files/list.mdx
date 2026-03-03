@@ -1,0 +1,150 @@
+---
+title: List Files
+description: Returns a list of files that belong to the user's organization
+---
+
+## GET /v1/files
+
+Returns a paginated list of files.
+
+## Authentication
+
+Requires provider authentication headers:
+
+```bash
+x-portkey-provider: openai
+Authorization: Bearer YOUR_OPENAI_API_KEY
+```
+
+## Request
+
+### Headers
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The provider to route the request to (e.g., `openai`, `azure-openai`)
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for the provider API
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="purpose" type="string">
+  Filter files by purpose (e.g., `fine-tune`, `assistants`, `batch`)
+</ParamField>
+
+## Response
+
+<ResponseField name="data" type="array">
+  Array of file objects
+  
+  <Expandable title="file object">
+    <ResponseField name="id" type="string">
+      The file identifier
+    </ResponseField>
+    
+    <ResponseField name="object" type="string">
+      The object type, always "file"
+    </ResponseField>
+    
+    <ResponseField name="bytes" type="integer">
+      The size of the file in bytes
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="integer">
+      Unix timestamp of when the file was created
+    </ResponseField>
+    
+    <ResponseField name="filename" type="string">
+      The name of the file
+    </ResponseField>
+    
+    <ResponseField name="purpose" type="string">
+      The purpose of the file
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  The object type, always "list"
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl https://localhost:8787/v1/files \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer $OPENAI_API_KEY"
+```
+
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-***"
+)
+
+files = client.files.list()
+for file in files.data:
+    print(f"{file.id}: {file.filename}")
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "openai",
+    Authorization: "sk-***"
+});
+
+const files = await client.files.list();
+files.data.forEach(file => {
+    console.log(`${file.id}: ${file.filename}`);
+});
+```
+
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "data": [
+    {
+      "id": "file-abc123",
+      "object": "file",
+      "bytes": 140,
+      "created_at": 1613779121,
+      "filename": "training_data.jsonl",
+      "purpose": "fine-tune"
+    },
+    {
+      "id": "file-def456",
+      "object": "file",
+      "bytes": 2048,
+      "created_at": 1613779150,
+      "filename": "validation_data.jsonl",
+      "purpose": "fine-tune"
+    }
+  ],
+  "object": "list"
+}
+```
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Upload File" icon="upload" href="/api/files/upload">
+    Upload a new file
+  </Card>
+  <Card title="Retrieve File" icon="file" href="/api/files/retrieve">
+    Get file metadata
+  </Card>
+  <Card title="Delete File" icon="trash" href="/api/files/delete">
+    Delete an uploaded file
+  </Card>
+</CardGroup>

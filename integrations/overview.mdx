@@ -1,0 +1,119 @@
+---
+title: "Integration Overview"
+description: "Connect Portkey AI Gateway with popular agent frameworks and SDKs"
+---
+
+Portkey AI Gateway seamlessly integrates with popular agent frameworks and SDKs, enabling you to route to 250+ LLMs while maintaining familiar APIs and patterns.
+
+## Why Integrate with Portkey?
+
+Integrating Portkey with your existing frameworks provides:
+
+- **Universal Access**: Connect to 250+ LLMs through a single, unified interface
+- **Production Reliability**: Automatic retries, fallbacks, and load balancing
+- **Performance**: Smart caching to reduce latency and costs by up to 20x
+- **Observability**: Complete logging and tracing for all requests
+- **Easy Migration**: Minimal code changes to switch between providers
+
+## Agent Frameworks
+
+Portkey integrates with leading agent frameworks to bring production-grade LLM routing to your agentic workflows.
+
+<CardGroup cols={2}>
+  <Card title="LangChain" icon="link" href="/integrations/langchain">
+    Build LLM applications with LangChain's composable framework
+  </Card>
+  
+  <Card title="LlamaIndex" icon="database" href="/integrations/llamaindex">
+    Create RAG applications with LlamaIndex data frameworks
+  </Card>
+  
+  <Card title="Autogen" icon="robot" href="/integrations/autogen">
+    Build multi-agent conversations with Microsoft Autogen
+  </Card>
+  
+  <Card title="CrewAI" icon="users" href="/integrations/crewai">
+    Orchestrate role-playing autonomous AI agents
+  </Card>
+  
+  <Card title="Phidata" icon="brain" href="/integrations/phidata">
+    Build AI assistants with memory and knowledge
+  </Card>
+</CardGroup>
+
+## SDK Integrations
+
+Use Portkey through native SDKs or existing OpenAI-compatible clients.
+
+<CardGroup cols={2}>
+  <Card title="Python SDK" icon="python" href="/integrations/python">
+    Native Python SDK with full type support
+  </Card>
+  
+  <Card title="JavaScript SDK" icon="js" href="/integrations/javascript">
+    TypeScript/JavaScript SDK for Node.js and browsers
+  </Card>
+  
+  <Card title="OpenAI SDK" icon="square-terminal" href="/integrations/openai-sdk">
+    Use Portkey as a drop-in replacement for OpenAI SDK
+  </Card>
+  
+  <Card title="REST API" icon="webhook" href="/integrations/rest-api">
+    Direct HTTP API access for any language
+  </Card>
+</CardGroup>
+
+## Quick Comparison
+
+| Framework | Call 250+ LLMs | Advanced Routing | Caching | Logging & Tracing | Observability |
+|-----------|----------------|------------------|---------|-------------------|---------------|
+| LangChain | ✅ | ✅ | ✅ | ✅ | ✅ |
+| LlamaIndex | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Autogen | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CrewAI | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Phidata | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Python SDK | ✅ | ✅ | ✅ | ✅ | ✅ |
+| JavaScript SDK | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+## Getting Started
+
+Most integrations follow a similar pattern:
+
+<Steps>
+  <Step title="Install Portkey">
+    Install the Portkey SDK or configure your existing client
+    ```bash
+    pip install portkey-ai
+    ```
+  </Step>
+  
+  <Step title="Configure Gateway">
+    Point your client to Portkey's gateway URL and add headers
+    ```python
+    from portkey_ai import Portkey
+    
+    client = Portkey(
+        api_key="your-portkey-api-key",
+        virtual_key="your-provider-virtual-key"
+    )
+    ```
+  </Step>
+  
+  <Step title="Make Requests">
+    Use your framework's standard API - no code changes needed
+    ```python
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+Select your framework or SDK from the cards above to see specific integration guides with code examples.
+
+<Note>
+  All integrations support Portkey's advanced features like fallbacks, load balancing, caching, and observability.
+</Note>

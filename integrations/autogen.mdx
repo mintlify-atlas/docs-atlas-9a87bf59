@@ -1,0 +1,592 @@
+---
+title: "Autogen Integration"
+description: "Use Portkey AI Gateway with Microsoft Autogen for multi-agent conversations"
+---
+
+Integrate Portkey with Microsoft Autogen to build robust multi-agent systems with access to 250+ LLMs and production-grade observability.
+
+## Overview
+
+Portkey enhances Autogen applications with:
+
+- **Multi-Provider Access**: Connect to 250+ LLMs for diverse agent capabilities
+- **Agent Observability**: Full logging and tracing for agent conversations
+- **Reliability**: Automatic fallbacks and retries for agent interactions
+- **Cost Tracking**: Monitor token usage across all agents
+- **Performance**: Smart caching to reduce latency in multi-turn conversations
+
+## Installation
+
+```bash
+pip install portkey-ai pyautogen
+```
+
+## Quick Start
+
+Autogen works seamlessly with Portkey through OpenAI-compatible configuration:
+
+<Steps>
+  <Step title="Import Libraries">
+    ```python
+    import autogen
+    from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+    ```
+  </Step>
+  
+  <Step title="Configure Portkey Headers">
+    ```python
+    portkey_headers = createHeaders(
+        api_key="your-portkey-api-key",
+        provider="openai"
+    )
+    ```
+  </Step>
+  
+  <Step title="Create LLM Config">
+    ```python
+    llm_config = {
+        "model": "gpt-4",
+        "api_key": "your-openai-api-key",
+        "base_url": PORTKEY_GATEWAY_URL,
+        "default_headers": portkey_headers
+    }
+    ```
+  </Step>
+  
+  <Step title="Create Agents">
+    ```python
+    assistant = autogen.AssistantAgent(
+        name="assistant",
+        llm_config=llm_config
+    )
+    
+    user_proxy = autogen.UserProxyAgent(
+        name="user_proxy",
+        human_input_mode="NEVER",
+        code_execution_config={"work_dir": "coding"}
+    )
+    ```
+  </Step>
+  
+  <Step title="Start Conversation">
+    ```python
+    user_proxy.initiate_chat(
+        assistant,
+        message="Write a Python function to calculate fibonacci numbers"
+    )
+    ```
+  </Step>
+</Steps>
+
+## Complete Multi-Agent Example
+
+Build a complete multi-agent system:
+
+```python
+import autogen
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+# Configure Portkey
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={
+        "environment": "production",
+        "application": "autogen-research"
+    }
+)
+
+# LLM configuration
+llm_config = {
+    "model": "gpt-4",
+    "api_key": "your-openai-api-key",
+    "base_url": PORTKEY_GATEWAY_URL,
+    "default_headers": portkey_headers,
+    "temperature": 0.7
+}
+
+# Create researcher agent
+researcher = autogen.AssistantAgent(
+    name="researcher",
+    system_message="You are a research assistant. Find and summarize information.",
+    llm_config=llm_config
+)
+
+# Create writer agent
+writer = autogen.AssistantAgent(
+    name="writer",
+    system_message="You are a technical writer. Create clear documentation.",
+    llm_config=llm_config
+)
+
+# Create critic agent
+critic = autogen.AssistantAgent(
+    name="critic",
+    system_message="You are a critic. Review and suggest improvements.",
+    llm_config=llm_config
+)
+
+# Create user proxy
+user_proxy = autogen.UserProxyAgent(
+    name="user_proxy",
+    human_input_mode="TERMINATE",
+    max_consecutive_auto_reply=10,
+    code_execution_config={"work_dir": "output", "use_docker": False}
+)
+
+# Create group chat
+groupchat = autogen.GroupChat(
+    agents=[user_proxy, researcher, writer, critic],
+    messages=[],
+    max_round=12
+)
+
+manager = autogen.GroupChatManager(
+    groupchat=groupchat,
+    llm_config=llm_config
+)
+
+# Start conversation
+user_proxy.initiate_chat(
+    manager,
+    message="Create a comprehensive guide on quantum computing for beginners"
+)
+```
+
+## Using Different Providers
+
+Switch between providers for different agents:
+
+<CodeGroup>
+```python GPT-4 for Main Agent
+portkey_headers_gpt4 = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm_config_gpt4 = {
+    "model": "gpt-4",
+    "api_key": "your-openai-api-key",
+    "base_url": PORTKEY_GATEWAY_URL,
+    "default_headers": portkey_headers_gpt4
+}
+
+assistant = autogen.AssistantAgent(
+    name="assistant",
+    llm_config=llm_config_gpt4
+)
+```
+
+```python Claude for Analysis Agent
+portkey_headers_claude = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="anthropic"
+)
+
+llm_config_claude = {
+    "model": "claude-3-opus-20240229",
+    "api_key": "your-anthropic-api-key",
+    "base_url": PORTKEY_GATEWAY_URL,
+    "default_headers": portkey_headers_claude
+}
+
+analyst = autogen.AssistantAgent(
+    name="analyst",
+    system_message="You are a data analyst.",
+    llm_config=llm_config_claude
+)
+```
+
+```python Llama for Creative Agent
+portkey_headers_llama = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="together-ai"
+)
+
+llm_config_llama = {
+    "model": "meta-llama/Llama-3-70b-chat-hf",
+    "api_key": "your-together-api-key",
+    "base_url": PORTKEY_GATEWAY_URL,
+    "default_headers": portkey_headers_llama
+}
+
+creative = autogen.AssistantAgent(
+    name="creative",
+    system_message="You are a creative writer.",
+    "llm_config=llm_config_llama
+)
+```
+</CodeGroup>
+
+## Advanced Routing
+
+### Fallback Configuration
+
+Automatically fallback to backup providers:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"virtual_key": "openai-virtual-key"},
+        {"virtual_key": "anthropic-virtual-key"},
+        {"virtual_key": "together-virtual-key"}
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+
+llm_config = {
+    "model": "gpt-4",
+    "api_key": "X",  # Not used with virtual keys
+    "base_url": PORTKEY_GATEWAY_URL,
+    "default_headers": portkey_headers
+}
+```
+
+### Load Balancing
+
+Distribute agent requests across multiple models:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "virtual_key": "openai-key-1",
+            "weight": 0.6
+        },
+        {
+            "virtual_key": "openai-key-2",
+            "weight": 0.4
+        }
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+```
+
+### Retry Configuration
+
+Handle transient failures in agent conversations:
+
+```python
+config = {
+    "retry": {
+        "attempts": 5,
+        "on_status_codes": [429, 500, 502, 503]
+    }
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    config=config
+)
+```
+
+## Agent Observability
+
+Track individual agents with custom metadata:
+
+```python
+# Create headers with agent-specific metadata
+def create_agent_config(agent_name, role):
+    portkey_headers = createHeaders(
+        api_key="your-portkey-api-key",
+        provider="openai",
+        metadata={
+            "agent_name": agent_name,
+            "agent_role": role,
+            "session_id": "session_123"
+        },
+        trace_id=f"agent-{agent_name}-trace"
+    )
+    
+    return {
+        "model": "gpt-4",
+        "api_key": "your-openai-api-key",
+        "base_url": PORTKEY_GATEWAY_URL,
+        "default_headers": portkey_headers
+    }
+
+# Create agents with tracking
+researcher = autogen.AssistantAgent(
+    name="researcher",
+    system_message="Research assistant",
+    llm_config=create_agent_config("researcher", "research")
+)
+
+writer = autogen.AssistantAgent(
+    name="writer",
+    system_message="Technical writer",
+    llm_config=create_agent_config("writer", "writing")
+)
+```
+
+## Caching for Agent Conversations
+
+Reduce costs in multi-turn conversations:
+
+```python
+config = {
+    "cache": {
+        "mode": "semantic",
+        "max_age": 3600
+    }
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    config=config
+)
+
+llm_config = {
+    "model": "gpt-4",
+    "api_key": "your-openai-api-key",
+    "base_url": PORTKEY_GATEWAY_URL,
+    "default_headers": portkey_headers
+}
+```
+
+## Function Calling with Agents
+
+Use function calling in agent conversations:
+
+```python
+import autogen
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm_config = {
+    "model": "gpt-4",
+    "api_key": "your-openai-api-key",
+    "base_url": PORTKEY_GATEWAY_URL,
+    "default_headers": portkey_headers,
+    "functions": [
+        {
+            "name": "get_weather",
+            "description": "Get the current weather",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City name"
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    ]
+}
+
+def get_weather(location: str) -> str:
+    """Mock weather function"""
+    return f"The weather in {location} is sunny, 72°F"
+
+assistant = autogen.AssistantAgent(
+    name="assistant",
+    llm_config=llm_config
+)
+
+user_proxy = autogen.UserProxyAgent(
+    name="user_proxy",
+    human_input_mode="NEVER",
+    function_map={"get_weather": get_weather}
+)
+
+user_proxy.initiate_chat(
+    assistant,
+    message="What's the weather like in San Francisco?"
+)
+```
+
+## Code Execution with Agents
+
+Combine code execution with LLM routing:
+
+```python
+import autogen
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={"feature": "code_execution"}
+)
+
+llm_config = {
+    "model": "gpt-4",
+    "api_key": "your-openai-api-key",
+    "base_url": PORTKEY_GATEWAY_URL,
+    "default_headers": portkey_headers
+}
+
+# Assistant that writes code
+assistant = autogen.AssistantAgent(
+    name="assistant",
+    system_message="You are a helpful AI assistant that writes Python code.",
+    llm_config=llm_config
+)
+
+# User proxy that executes code
+user_proxy = autogen.UserProxyAgent(
+    name="user_proxy",
+    human_input_mode="TERMINATE",
+    max_consecutive_auto_reply=10,
+    is_termination_msg=lambda x: x.get("content", "").rstrip().endswith("TERMINATE"),
+    code_execution_config={
+        "work_dir": "coding",
+        "use_docker": False
+    }
+)
+
+# Start coding task
+user_proxy.initiate_chat(
+    assistant,
+    message="""
+    Create a Python script that:
+    1. Generates 100 random numbers
+    2. Calculates mean and standard deviation
+    3. Creates a histogram
+    Save the plot as 'distribution.png'
+    """
+)
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Track Agent Interactions">
+    Add metadata to distinguish between agents:
+    ```python
+    metadata={"agent_name": "researcher", "role": "research"}
+    ```
+  </Accordion>
+  
+  <Accordion title="Use Fallbacks for Critical Agents">
+    Configure fallbacks for agents that perform critical tasks:
+    ```python
+    config = {"strategy": {"mode": "fallback"}, "targets": [...]}
+    ```
+  </Accordion>
+  
+  <Accordion title="Enable Caching">
+    Use caching for agents that may repeat similar queries:
+    ```python
+    config = {"cache": {"mode": "semantic", "max_age": 3600}}
+    ```
+  </Accordion>
+  
+  <Accordion title="Monitor Token Usage">
+    Track token usage per agent to optimize costs in the Portkey dashboard.
+  </Accordion>
+</AccordionGroup>
+
+## Monitoring Agent Conversations
+
+View detailed agent conversation logs in the Portkey dashboard:
+
+- Individual agent requests/responses
+- Token usage per agent
+- Latency for each agent interaction
+- Error rates by agent
+- Cost breakdown by agent
+- Conversation flow visualization
+
+## Example: Research Team
+
+Build a complete research team:
+
+```python
+import autogen
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+# Base configuration
+base_config = {
+    "api_key": "your-portkey-api-key",
+    "provider": "openai"
+}
+
+# Different configs for different agents
+llm_configs = {
+    "gpt4": {
+        "model": "gpt-4",
+        "api_key": "your-openai-api-key",
+        "base_url": PORTKEY_GATEWAY_URL,
+        "default_headers": createHeaders(**base_config, metadata={"model": "gpt4"})
+    },
+    "gpt35": {
+        "model": "gpt-3.5-turbo",
+        "api_key": "your-openai-api-key",
+        "base_url": PORTKEY_GATEWAY_URL,
+        "default_headers": createHeaders(**base_config, metadata={"model": "gpt35"})
+    }
+}
+
+# Create specialized agents
+lead_researcher = autogen.AssistantAgent(
+    name="lead_researcher",
+    system_message="Lead researcher coordinating the team",
+    llm_config=llm_configs["gpt4"]
+)
+
+data_analyst = autogen.AssistantAgent(
+    name="data_analyst",
+    system_message="Analyze data and find patterns",
+    llm_config=llm_configs["gpt4"]
+)
+
+writer = autogen.AssistantAgent(
+    name="writer",
+    system_message="Write clear summaries",
+    llm_config=llm_configs["gpt35"]
+)
+
+user_proxy = autogen.UserProxyAgent(
+    name="user",
+    human_input_mode="TERMINATE",
+    max_consecutive_auto_reply=15
+)
+
+# Create group chat
+groupchat = autogen.GroupChat(
+    agents=[user_proxy, lead_researcher, data_analyst, writer],
+    messages=[],
+    max_round=20
+)
+
+manager = autogen.GroupChatManager(
+    groupchat=groupchat,
+    llm_config=llm_configs["gpt4"]
+)
+
+# Start research project
+user_proxy.initiate_chat(
+    manager,
+    message="Research the impact of AI on healthcare and write a comprehensive report"
+)
+```
+
+## Resources
+
+- [Autogen Documentation](https://microsoft.github.io/autogen/)
+- [Portkey Gateway Configs](/concepts/configs)
+- [Agent Best Practices](https://microsoft.github.io/autogen/docs/topics/prompting-and-reasoning/)
+- [Example Notebooks](https://github.com/Portkey-AI/gateway/tree/main/cookbook/monitoring-agents)
+
+<Note>
+  Questions? Join our [Discord community](https://discord.gg/portkey) for help with agent implementations.
+</Note>

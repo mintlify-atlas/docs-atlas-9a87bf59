@@ -1,0 +1,391 @@
+---
+title: "MCP Gateway Authentication"
+description: "Configure single authentication layer for all MCP servers at the gateway level"
+---
+
+## Overview
+
+MCP Gateway provides a centralized authentication layer that eliminates the need to manage credentials for individual MCP servers. Users authenticate once with the gateway, and all subsequent requests to MCP servers are automatically verified and authorized.
+
+## Benefits of Gateway Authentication
+
+### Single Sign-On (SSO)
+
+Users authenticate once and get access to all authorized MCP servers:
+
+- No need to manage multiple API keys
+- Consistent authentication experience
+- Automatic token refresh
+- Session management
+
+### Credential Security
+
+MCP server credentials are securely stored at the gateway:
+
+- Users never see server API keys
+- Credentials are encrypted at rest
+- Automatic rotation support
+- Audit trail for all access
+
+### Identity Forwarding
+
+The gateway automatically forwards user identity to MCP servers:
+
+- User email and name
+- Team and organization info
+- Custom roles and attributes
+- Request context
+
+## Authentication Methods
+
+MCP Gateway supports multiple authentication methods to fit your organization's needs.
+
+### Bearer Token Authentication
+
+The simplest method using API tokens:
+
+```json
+{
+  "auth": {
+    "type": "bearer",
+    "enabled": true
+  }
+}
+```
+
+**Client configuration:**
+
+```json
+{
+  "mcpServers": {
+    "portkey-gateway": {
+      "url": "http://localhost:8787/mcp",
+      "headers": {
+        "Authorization": "Bearer pt_your_token_here"
+      }
+    }
+  }
+}
+```
+
+<Note>
+Generate tokens via the gateway API or console. Tokens can be scoped to specific users, teams, and permissions.
+</Note>
+
+### API Key Authentication
+
+Use API keys with configurable scopes and expiration:
+
+```json
+{
+  "auth": {
+    "type": "api-key",
+    "enabled": true,
+    "header": "X-API-Key"
+  }
+}
+```
+
+**Client configuration:**
+
+```json
+{
+  "mcpServers": {
+    "portkey-gateway": {
+      "url": "http://localhost:8787/mcp",
+      "headers": {
+        "X-API-Key": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### OAuth 2.0 / OIDC
+
+Integrate with your existing identity provider:
+
+```json
+{
+  "auth": {
+    "type": "oauth",
+    "enabled": true,
+    "provider": "okta",
+    "clientId": "your-client-id",
+    "clientSecret": "${OAUTH_CLIENT_SECRET}",
+    "issuer": "https://your-org.okta.com",
+    "scopes": ["openid", "profile", "email"]
+  }
+}
+```
+
+**Supported providers:**
+- Okta
+- Auth0
+- Azure AD
+- Google Workspace
+- Custom OIDC providers
+
+<Info>
+OAuth/OIDC authentication provides the most secure and scalable solution for enterprise deployments.
+</Info>
+
+### mTLS (Mutual TLS)
+
+For maximum security with client certificate authentication:
+
+```json
+{
+  "auth": {
+    "type": "mtls",
+    "enabled": true,
+    "ca": "/path/to/ca.crt",
+    "requireClientCert": true
+  }
+}
+```
+
+**Use cases:**
+- High-security environments
+- B2B integrations
+- Regulated industries
+- Zero-trust architectures
+
+## Configuring Authentication
+
+<Steps>
+  <Step title="Choose authentication method">
+    Select the authentication method that fits your requirements:
+    
+    - **Bearer tokens**: Quick setup, good for development
+    - **API keys**: Production-ready, simple to manage
+    - **OAuth/OIDC**: Enterprise SSO integration
+    - **mTLS**: Maximum security
+  </Step>
+  
+  <Step title="Update gateway configuration">
+    Add authentication configuration to your gateway:
+    
+    ```bash
+    # Set via environment variables
+    export PORTKEY_AUTH_TYPE=bearer
+    export PORTKEY_AUTH_ENABLED=true
+    
+    # Or update config file
+    vim gateway-config.json
+    ```
+  </Step>
+  
+  <Step title="Generate credentials">
+    Create authentication credentials for your users:
+    
+    ```bash
+    # Via API
+    curl -X POST http://localhost:8787/v1/auth/tokens \
+      -H "Authorization: Bearer admin-token" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "user": "alice@company.com",
+        "team": "engineering",
+        "scopes": ["mcp:read", "mcp:write"],
+        "expiresIn": "30d"
+      }'
+    ```
+    
+    <Tip>
+      You can also generate tokens via the gateway console UI.
+    </Tip>
+  </Step>
+  
+  <Step title="Configure MCP clients">
+    Update your MCP client configuration with the credentials:
+    
+    ```json
+    {
+      "mcpServers": {
+        "portkey-gateway": {
+          "url": "http://localhost:8787/mcp",
+          "headers": {
+            "Authorization": "Bearer pt_...your_token..."
+          }
+        }
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+## Token Management
+
+### Creating Tokens
+
+Generate tokens with specific permissions and expiration:
+
+```bash
+curl -X POST http://localhost:8787/v1/auth/tokens \
+  -H "Authorization: Bearer admin-token" \
+  -d '{
+    "user": "bob@company.com",
+    "team": "data-science",
+    "permissions": {
+      "servers": ["github", "filesystem"],
+      "tools": ["read", "write"]
+    },
+    "expiresIn": "7d"
+  }'
+```
+
+### Revoking Tokens
+
+Instantly revoke access when needed:
+
+```bash
+curl -X DELETE http://localhost:8787/v1/auth/tokens/pt_abc123 \
+  -H "Authorization: Bearer admin-token"
+```
+
+### Token Rotation
+
+Rotate tokens before expiration:
+
+```bash
+curl -X POST http://localhost:8787/v1/auth/tokens/pt_abc123/rotate \
+  -H "Authorization: Bearer admin-token"
+```
+
+## Identity Forwarding
+
+The gateway automatically forwards user identity to MCP servers in request headers:
+
+```http
+POST /tool/call
+X-User-Email: alice@company.com
+X-User-Name: Alice Smith
+X-User-Team: engineering
+X-User-Roles: developer,team-lead
+X-Organization-Id: org_abc123
+```
+
+Your MCP server can use these headers to:
+- Personalize responses
+- Apply user-specific permissions
+- Track user activity
+- Implement custom authorization logic
+
+<Info>
+Identity forwarding is automatically enabled and requires no additional configuration.
+</Info>
+
+## Security Best Practices
+
+### Token Security
+
+<AccordionGroup>
+  <Accordion title="Use short-lived tokens" icon="clock">
+    Set appropriate expiration times:
+    - Development: 7-30 days
+    - Production: 1-7 days
+    - CI/CD: 1-24 hours
+    - Implement automatic rotation
+  </Accordion>
+  
+  <Accordion title="Scope tokens appropriately" icon="filter">
+    Grant minimum required permissions:
+    - Limit to specific servers
+    - Restrict to necessary tools
+    - Use team-based scoping
+    - Regular permission audits
+  </Accordion>
+  
+  <Accordion title="Secure token storage" icon="vault">
+    Store tokens securely:
+    - Use environment variables
+    - Never commit to version control
+    - Encrypt in CI/CD systems
+    - Use secret managers (AWS Secrets Manager, Vault)
+  </Accordion>
+  
+  <Accordion title="Monitor and audit" icon="magnifying-glass">
+    Track authentication activity:
+    - Log all authentication attempts
+    - Alert on failed attempts
+    - Monitor token usage patterns
+    - Regular access reviews
+  </Accordion>
+</AccordionGroup>
+
+### TLS/SSL Configuration
+
+Always use HTTPS in production:
+
+```json
+{
+  "server": {
+    "ssl": {
+      "enabled": true,
+      "cert": "/path/to/cert.pem",
+      "key": "/path/to/key.pem"
+    }
+  }
+}
+```
+
+<Warning>
+Never use plain HTTP for authentication in production environments. Always use HTTPS to protect credentials in transit.
+</Warning>
+
+## Example: Complete Auth Setup
+
+Here's a complete authentication configuration example:
+
+```json gateway-config.json
+{
+  "server": {
+    "port": 8787,
+    "ssl": {
+      "enabled": true,
+      "cert": "/etc/ssl/gateway.crt",
+      "key": "/etc/ssl/gateway.key"
+    }
+  },
+  "auth": {
+    "type": "oauth",
+    "enabled": true,
+    "provider": "okta",
+    "clientId": "your-client-id",
+    "clientSecret": "${OAUTH_CLIENT_SECRET}",
+    "issuer": "https://your-org.okta.com",
+    "scopes": ["openid", "profile", "email"],
+    "tokenExpiration": "7d"
+  },
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+    }
+  },
+  "identityForwarding": {
+    "enabled": true,
+    "headers": ["email", "name", "team", "roles"]
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Access Control" icon="shield" href="/mcp/access-control">
+    Configure granular permissions and role-based access
+  </Card>
+  
+  <Card title="Monitoring" icon="chart-line" href="/features/observability">
+    Track authentication events and security metrics
+  </Card>
+</CardGroup>

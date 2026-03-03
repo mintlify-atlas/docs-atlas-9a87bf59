@@ -1,0 +1,372 @@
+---
+title: Fine-tuning Jobs
+description: Create and manage fine-tuning jobs for custom model training
+---
+
+## Fine-tuning API
+
+Fine-tune models on your own data to improve performance for your specific use case. The gateway supports fine-tuning endpoints for compatible providers.
+
+## Endpoints
+
+### Create Fine-tuning Job
+
+**POST /v1/fine_tuning/jobs**
+
+Create a fine-tuning job to train a model on your data.
+
+### List Fine-tuning Jobs
+
+**GET /v1/fine_tuning/jobs**
+
+List all fine-tuning jobs for your organization.
+
+### Retrieve Fine-tuning Job
+
+**GET /v1/fine_tuning/jobs/:jobId**
+
+Get details about a specific fine-tuning job.
+
+### Cancel Fine-tuning Job
+
+**POST /v1/fine_tuning/jobs/:jobId/cancel**
+
+Cancel a fine-tuning job that is in progress.
+
+## Authentication
+
+Requires provider authentication headers:
+
+```bash
+x-portkey-provider: openai
+Authorization: Bearer YOUR_OPENAI_API_KEY
+```
+
+## Create Fine-tuning Job
+
+### Request Parameters
+
+<ParamField body="training_file" type="string" required>
+  The ID of an uploaded file that contains training data. The file must be formatted as JSONL.
+</ParamField>
+
+<ParamField body="model" type="string" required>
+  The model to fine-tune (e.g., `gpt-4o-mini-2024-07-18`, `gpt-3.5-turbo-0125`)
+</ParamField>
+
+<ParamField body="validation_file" type="string">
+  The ID of an uploaded file containing validation data (optional)
+</ParamField>
+
+<ParamField body="hyperparameters" type="object">
+  Training hyperparameters
+  
+  <Expandable title="hyperparameters object">
+    <ParamField body="n_epochs" type="integer">
+      Number of training epochs (default: auto)
+    </ParamField>
+    
+    <ParamField body="batch_size" type="integer">
+      Batch size for training (default: auto)
+    </ParamField>
+    
+    <ParamField body="learning_rate_multiplier" type="number">
+      Learning rate multiplier (default: auto)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="suffix" type="string">
+  A string to append to the fine-tuned model name (max 40 characters)
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">
+  The fine-tuning job identifier
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  The object type, always "fine_tuning.job"
+</ResponseField>
+
+<ResponseField name="model" type="string">
+  The base model being fine-tuned
+</ResponseField>
+
+<ResponseField name="created_at" type="integer">
+  Unix timestamp of when the job was created
+</ResponseField>
+
+<ResponseField name="finished_at" type="integer">
+  Unix timestamp of when the job finished (null if in progress)
+</ResponseField>
+
+<ResponseField name="fine_tuned_model" type="string">
+  The name of the fine-tuned model (null until training completes)
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status: `created`, `running`, `succeeded`, `failed`, or `cancelled`
+</ResponseField>
+
+<ResponseField name="training_file" type="string">
+  The ID of the training file
+</ResponseField>
+
+<ResponseField name="validation_file" type="string">
+  The ID of the validation file (if provided)
+</ResponseField>
+
+<ResponseField name="hyperparameters" type="object">
+  The hyperparameters used for training
+</ResponseField>
+
+## Example
+
+### Training Data Format
+
+Prepare your training data as JSONL:
+
+```json
+{"messages": [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": "What is the capital of France?"}, {"role": "assistant", "content": "The capital of France is Paris."}]}
+{"messages": [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": "What is 2+2?"}, {"role": "assistant", "content": "2+2 equals 4."}]}
+```
+
+<CodeGroup>
+
+```bash cURL
+# Upload training file
+curl https://localhost:8787/v1/files \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -F purpose="fine-tune" \
+  -F file="@training_data.jsonl"
+
+# Create fine-tuning job
+curl https://localhost:8787/v1/fine_tuning/jobs \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "training_file": "file-abc123",
+    "model": "gpt-4o-mini-2024-07-18",
+    "suffix": "custom-model-v1"
+  }'
+```
+
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-***"
+)
+
+# Upload training file
+with open("training_data.jsonl", "rb") as file:
+    training_file = client.files.create(
+        file=file,
+        purpose="fine-tune"
+    )
+
+# Create fine-tuning job
+job = client.fine_tuning.jobs.create(
+    training_file=training_file.id,
+    model="gpt-4o-mini-2024-07-18",
+    suffix="custom-model-v1",
+    hyperparameters={
+        "n_epochs": 3
+    }
+)
+
+print(f"Job created: {job.id}")
+print(f"Status: {job.status}")
+
+# Monitor job status
+import time
+while True:
+    job = client.fine_tuning.jobs.retrieve(job.id)
+    print(f"Status: {job.status}")
+    
+    if job.status in ["succeeded", "failed", "cancelled"]:
+        break
+    
+    time.sleep(60)  # Check every minute
+
+if job.status == "succeeded":
+    print(f"Fine-tuned model: {job.fine_tuned_model}")
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+import fs from 'fs';
+
+const client = new Portkey({
+    provider: "openai",
+    Authorization: "sk-***"
+});
+
+// Upload training file
+const trainingFile = await client.files.create({
+    file: fs.createReadStream("training_data.jsonl"),
+    purpose: "fine-tune"
+});
+
+// Create fine-tuning job
+const job = await client.fineTuning.jobs.create({
+    training_file: trainingFile.id,
+    model: "gpt-4o-mini-2024-07-18",
+    suffix: "custom-model-v1",
+    hyperparameters: {
+        n_epochs: 3
+    }
+});
+
+console.log(`Job created: ${job.id}`);
+console.log(`Status: ${job.status}`);
+
+// Monitor job status
+const checkJob = async () => {
+    while (true) {
+        const updatedJob = await client.fineTuning.jobs.retrieve(job.id);
+        console.log(`Status: ${updatedJob.status}`);
+        
+        if (["succeeded", "failed", "cancelled"].includes(updatedJob.status)) {
+            if (updatedJob.status === "succeeded") {
+                console.log(`Fine-tuned model: ${updatedJob.fine_tuned_model}`);
+            }
+            break;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 60000));
+    }
+};
+
+checkJob();
+```
+
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "id": "ftjob-abc123",
+  "object": "fine_tuning.job",
+  "model": "gpt-4o-mini-2024-07-18",
+  "created_at": 1713894800,
+  "finished_at": null,
+  "fine_tuned_model": null,
+  "organization_id": "org-123",
+  "result_files": [],
+  "status": "created",
+  "training_file": "file-abc123",
+  "validation_file": null,
+  "hyperparameters": {
+    "n_epochs": "auto"
+  },
+  "trained_tokens": null
+}
+```
+
+## List Fine-tuning Jobs
+
+```bash
+GET /v1/fine_tuning/jobs?limit=10
+```
+
+Returns a paginated list of fine-tuning jobs.
+
+## Retrieve Fine-tuning Job
+
+```bash
+GET /v1/fine_tuning/jobs/ftjob-abc123
+```
+
+Get details about a specific job, including current status and progress.
+
+## Cancel Fine-tuning Job
+
+```bash
+POST /v1/fine_tuning/jobs/ftjob-abc123/cancel
+```
+
+Cancel a job that is in progress. The job status will change to `cancelled`.
+
+## Using the Fine-tuned Model
+
+Once training completes, use your fine-tuned model:
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-***"
+)
+
+response = client.chat.completions.create(
+    model="ft:gpt-4o-mini-2024-07-18:org-name:custom-model-v1:abc123",
+    messages=[
+        {"role": "user", "content": "Hello!"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Training Data Quality">
+    - Provide at least 50-100 high-quality examples
+    - Ensure examples are diverse and representative
+    - Follow the same format across all examples
+    - Include a system message if needed for your use case
+  </Accordion>
+  
+  <Accordion title="Hyperparameter Tuning">
+    - Start with default (auto) hyperparameters
+    - Monitor validation loss to detect overfitting
+    - Adjust n_epochs if the model isn't learning enough or is overfitting
+    - Use validation data to evaluate performance
+  </Accordion>
+  
+  <Accordion title="Cost Management">
+    - Training costs are based on the number of tokens in your training data
+    - Start with a small dataset to validate your approach
+    - Fine-tuning is typically 10-20x the cost of inference
+    - Consider if prompt engineering can achieve similar results first
+  </Accordion>
+  
+  <Accordion title="Model Versioning">
+    - Use the suffix parameter to create meaningful model names
+    - Keep track of which training data was used for each model
+    - Test new models thoroughly before replacing production models
+  </Accordion>
+</AccordionGroup>
+
+## Provider Support
+
+<Note>
+  Fine-tuning support varies by provider. Currently supported:
+  - OpenAI: GPT-4, GPT-3.5 Turbo
+  - Azure OpenAI: Same models as OpenAI
+  
+  Check provider documentation for specific model availability.
+</Note>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Upload File" icon="upload" href="/api/files/upload">
+    Upload training data
+  </Card>
+  <Card title="Chat Completions" icon="message" href="/api/chat/completions">
+    Use your fine-tuned model
+  </Card>
+  <Card title="Provider Guide" icon="server" href="/providers/openai">
+    Provider-specific details
+  </Card>
+</CardGroup>

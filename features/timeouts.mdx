@@ -1,0 +1,406 @@
+---
+title: "Request Timeouts"
+description: "Manage request duration and prevent hanging requests"
+---
+
+## Overview
+
+Request timeouts prevent your application from waiting indefinitely for slow or unresponsive LLM providers. The Gateway allows you to set granular timeout limits that automatically terminate requests exceeding the specified duration.
+
+## How It Works
+
+When you set a `request_timeout`, the Gateway:
+
+1. Starts a timer when the request is sent
+2. Monitors the request progress
+3. Aborts the request if it exceeds the timeout
+4. Returns a 408 (Request Timeout) error with details
+
+The timeout applies to the entire request lifecycle, including:
+- Network latency
+- Provider processing time
+- Response streaming
+
+<Info>
+Timeouts are enforced at the Gateway level using AbortController, ensuring reliable timeout behavior across all providers.
+</Info>
+
+## Configuration
+
+### Basic Timeout
+
+Set a timeout in milliseconds:
+
+```json
+{
+  "request_timeout": 30000
+}
+```
+
+This configuration aborts any request taking longer than 30 seconds.
+
+### Provider-Specific Timeouts
+
+Different timeouts for different providers:
+
+```json
+{
+  "strategy": { "mode": "fallback" },
+  "targets": [
+    {
+      "provider": "openai",
+      "api_key": "sk-***",
+      "request_timeout": 20000
+    },
+    {
+      "provider": "anthropic",
+      "api_key": "sk-ant-***",
+      "request_timeout": 45000
+    }
+  ]
+}
+```
+
+### Timeouts with Retries
+
+Combine timeout with retry logic:
+
+```json
+{
+  "request_timeout": 15000,
+  "retry": {
+    "attempts": 3,
+    "on_status_codes": [408, 429, 500, 502, 503, 504]
+  }
+}
+```
+
+<Note>
+If a request times out (408), it can be retried if 408 is included in `on_status_codes`. This is useful for recovering from temporary network issues.
+</Note>
+
+## Usage Examples
+
+<CodeGroup>
+
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="PORTKEY_API_KEY",
+    provider="openai",
+    Authorization="sk-***",
+    config={
+        "request_timeout": 30000  # 30 seconds
+    }
+)
+
+try:
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Explain quantum computing"}]
+    )
+except Exception as e:
+    if "timeout" in str(e).lower():
+        print("Request timed out after 30 seconds")
+```
+
+```javascript JavaScript
+import { Portkey } from 'portkey-ai';
+
+const client = new Portkey({
+  apiKey: 'PORTKEY_API_KEY',
+  provider: 'openai',
+  Authorization: 'sk-***',
+  config: {
+    request_timeout: 30000  // 30 seconds
+  }
+});
+
+try {
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: 'Explain quantum computing' }]
+  });
+} catch (error) {
+  if (error.message.includes('timeout')) {
+    console.log('Request timed out after 30 seconds');
+  }
+}
+```
+
+```bash cURL
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-api-key: $PORTKEY_API_KEY" \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "x-portkey-request-timeout: 30000" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Explain quantum computing"}]
+  }'
+```
+
+</CodeGroup>
+
+## Implementation Details
+
+### Timeout Mechanism
+
+The Gateway uses AbortController to enforce timeouts:
+
+```typescript
+// From src/handlers/retryHandler.ts
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeout: number
+) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  const timeoutRequestOptions = {
+    ...options,
+    signal: controller.signal,
+  };
+
+  try {
+    const response = await fetch(url, timeoutRequestOptions);
+    clearTimeout(timeoutId);
+    return response;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      return new Response(
+        JSON.stringify({
+          error: {
+            message: `Request exceeded the timeout: ${timeout}ms`,
+            type: 'timeout_error',
+            code: null
+          }
+        }),
+        { status: 408 }
+      );
+    }
+    throw err;
+  }
+}
+```
+
+### Timeout Response Format
+
+When a timeout occurs, the Gateway returns:
+
+```json
+{
+  "error": {
+    "message": "Request exceeded the timeout sent in the request: 30000ms",
+    "type": "timeout_error",
+    "param": null,
+    "code": null
+  }
+}
+```
+
+HTTP Status: `408 Request Timeout`
+
+<Warning>
+The timeout response is already in OpenAI-compatible format. It won't be transformed again by response transformers.
+</Warning>
+
+## Timeout Strategies
+
+### Conservative Timeouts
+
+For production applications with strict SLA requirements:
+
+```json
+{
+  "request_timeout": 10000,
+  "retry": {
+    "attempts": 2,
+    "on_status_codes": [408, 500, 502, 503, 504]
+  },
+  "strategy": { "mode": "fallback" },
+  "targets": [
+    {"provider": "openai", "api_key": "sk-***"},
+    {"provider": "anthropic", "api_key": "sk-ant-***"}
+  ]
+}
+```
+
+This configuration:
+- Sets 10-second timeout
+- Retries twice on timeout
+- Falls back to alternative provider
+- Maximum wait: ~30 seconds (10s + 10s + 10s)
+
+### Generous Timeouts
+
+For batch processing or long-form content:
+
+```json
+{
+  "request_timeout": 120000,
+  "retry": {
+    "attempts": 1
+  }
+}
+```
+
+### Model-Specific Timeouts
+
+Different timeouts based on model characteristics:
+
+```json
+{
+  "strategy": { "mode": "conditional" },
+  "conditions": [
+    {
+      "query": { "model": "gpt-4o" },
+      "then": "fast-model"
+    },
+    {
+      "query": { "model": "o1-preview" },
+      "then": "slow-model"
+    }
+  ],
+  "targets": [
+    {
+      "name": "fast-model",
+      "provider": "openai",
+      "api_key": "sk-***",
+      "request_timeout": 15000
+    },
+    {
+      "name": "slow-model",
+      "provider": "openai",
+      "api_key": "sk-***",
+      "request_timeout": 60000
+    }
+  ]
+}
+```
+
+## Streaming Timeouts
+
+Timeouts apply to the entire streaming response, not individual chunks:
+
+```json
+{
+  "request_timeout": 60000
+}
+```
+
+For streaming requests:
+- Timeout starts when connection is established
+- Applies to the entire stream duration
+- Streaming ends if total time exceeds timeout
+
+<Info>
+For long-running streaming responses, set a generous timeout or omit it entirely to avoid premature termination.
+</Info>
+
+## Recommended Timeouts
+
+### By Use Case
+
+| Use Case | Timeout | Reasoning |
+|----------|---------|----------|
+| Chatbots | 10-15s | Users expect quick responses |
+| Code Generation | 30-45s | Complex generation takes longer |
+| Document Analysis | 60-90s | Processing large documents |
+| Batch Processing | 120s+ | No user waiting |
+| Streaming Chat | 30-60s | Account for full response time |
+
+### By Provider
+
+| Provider | Recommended Timeout | Notes |
+|----------|---------------------|-------|
+| OpenAI | 20-30s | Generally fast |
+| Anthropic | 25-40s | Varies by model |
+| Azure OpenAI | 30-45s | May have added latency |
+| Bedrock | 40-60s | Regional variations |
+| Ollama (local) | 60s+ | Depends on hardware |
+
+## Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Set Realistic Timeouts">
+Timeout should be longer than expected response time. Monitor P95/P99 latencies and set timeout accordingly. Typical recommendation: P99 latency × 1.5.
+</Accordion>
+
+<Accordion title="Always Use Timeouts in Production">
+Even if providers are generally reliable, always set timeouts to prevent hanging requests from impacting your application.
+</Accordion>
+
+<Accordion title="Combine with Retries">
+Use retries with timeouts to recover from temporary slowdowns. Include 408 in `on_status_codes` to retry timed-out requests.
+</Accordion>
+
+<Accordion title="Monitor Timeout Rates">
+High timeout rates indicate provider performance issues. Track timeout frequency to identify patterns and adjust configurations.
+</Accordion>
+
+<Accordion title="Consider User Experience">
+For user-facing applications, set timeouts based on acceptable wait times. Users typically abandon after 5-10 seconds.
+</Accordion>
+
+<Accordion title="Account for Streaming">
+For streaming responses, timeout should cover the entire generation time, not just first chunk. Monitor end-to-end streaming duration.
+</Accordion>
+
+</AccordionGroup>
+
+## Troubleshooting
+
+### Frequent Timeouts
+
+If you're experiencing frequent timeouts:
+
+1. **Check provider status**: Verify the provider isn't experiencing outages
+2. **Increase timeout**: Current setting may be too aggressive
+3. **Monitor latency**: Use Gateway logs to track actual response times
+4. **Consider fallbacks**: Add backup providers for resilience
+5. **Optimize prompts**: Reduce token count to speed up generation
+
+### Timeout Too Short
+
+Signs your timeout is too short:
+- Frequent 408 errors
+- Requests consistently timing out
+- Users reporting incomplete responses
+
+**Solution**: Gradually increase timeout while monitoring success rate.
+
+### Timeout Too Long
+
+Signs your timeout is too long:
+- Users waiting too long for errors
+- Resources held unnecessarily
+- Poor user experience
+
+**Solution**: Reduce timeout based on P95 latency data.
+
+## Related Features
+
+<CardGroup cols={2}>
+
+<Card title="Retries" icon="rotate-right" href="/features/retries">
+  Automatically retry timed-out requests
+</Card>
+
+<Card title="Fallbacks" icon="route" href="/features/fallbacks">
+  Switch providers on timeout
+</Card>
+
+<Card title="Load Balancing" icon="scale-balanced" href="/concepts/load-balancing">
+  Distribute load to reduce timeouts
+</Card>
+
+<Card title="Streaming" icon="water" href="/features/streaming">
+  Streaming-specific considerations
+</Card>
+
+</CardGroup>

@@ -1,0 +1,419 @@
+---
+title: 'Create Translation'
+description: 'POST /v1/audio/translations - Translate speech to English text'
+---
+
+## Endpoint
+
+```
+POST /v1/audio/translations
+```
+
+Translates audio in any supported language into English text.
+
+## Request
+
+### Headers
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `multipart/form-data`
+</ParamField>
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The AI provider to use (e.g., `openai`)
+</ParamField>
+
+<ParamField header="x-portkey-api-key" type="string" required>
+  Your API key for the specified provider
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="file" type="file" required>
+  The audio file to translate. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm. File size limit: 25 MB.
+</ParamField>
+
+<ParamField body="model" type="string" required>
+  The model to use for translation (e.g., `whisper-1`)
+</ParamField>
+
+<ParamField body="prompt" type="string">
+  Optional text to guide the model's style or continue a previous audio segment. The prompt should be in English.
+</ParamField>
+
+<ParamField body="response_format" type="string" default="json">
+  Format of the response: `json`, `text`, `srt`, `verbose_json`, or `vtt`
+</ParamField>
+
+<ParamField body="temperature" type="number" default={0}>
+  Sampling temperature between 0 and 1
+</ParamField>
+
+## Response
+
+### JSON Format (default)
+
+<ResponseField name="text" type="string">
+  The translated text in English
+</ResponseField>
+
+### Verbose JSON Format
+
+<ResponseField name="task" type="string">
+  Type of task (`translate`)
+</ResponseField>
+
+<ResponseField name="language" type="string">
+  Source language detected
+</ResponseField>
+
+<ResponseField name="duration" type="number">
+  Duration of audio in seconds
+</ResponseField>
+
+<ResponseField name="text" type="string">
+  The translated text in English
+</ResponseField>
+
+<ResponseField name="segments" type="array">
+  Array of translation segments with timestamps
+</ResponseField>
+
+## Examples
+
+### Basic Translation
+
+```bash
+curl http://localhost:8787/v1/audio/translations \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -F file="@german_audio.mp3" \
+  -F model="whisper-1"
+```
+
+### Response
+
+```json
+{
+  "text": "Hello, this is a test translation from German to English."
+}
+```
+
+### Python SDK
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("spanish_audio.mp3", "rb")
+
+translation = client.audio.translations.create(
+    model="whisper-1",
+    file=audio_file
+)
+
+print(translation.text)
+```
+
+### JavaScript SDK
+
+```javascript
+import Portkey from 'portkey-ai';
+import fs from 'fs';
+
+const client = new Portkey({
+  provider: 'openai',
+  Authorization: 'sk-...'
+});
+
+const translation = await client.audio.translations.create({
+  file: fs.createReadStream('french_audio.mp3'),
+  model: 'whisper-1'
+});
+
+console.log(translation.text);
+```
+
+### Verbose JSON with Metadata
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("japanese_audio.mp3", "rb")
+
+translation = client.audio.translations.create(
+    model="whisper-1",
+    file=audio_file,
+    response_format="verbose_json"
+)
+
+print(f"Original language: {translation.language}")
+print(f"Duration: {translation.duration}s")
+print(f"\nTranslation: {translation.text}\n")
+
+for segment in translation.segments:
+    print(f"[{segment.start:.2f}s - {segment.end:.2f}s] {segment.text}")
+```
+
+### SRT Subtitles in English
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("chinese_video_audio.mp3", "rb")
+
+srt = client.audio.translations.create(
+    model="whisper-1",
+    file=audio_file,
+    response_format="srt"
+)
+
+# Save as English subtitle file
+with open("english_subtitles.srt", "w") as f:
+    f.write(srt.text)
+
+print("English subtitles saved!")
+```
+
+### VTT Subtitles
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("italian_audio.mp3", "rb")
+
+vtt = client.audio.translations.create(
+    model="whisper-1",
+    file=audio_file,
+    response_format="vtt"
+)
+
+# Save as WebVTT subtitle file
+with open("english_subtitles.vtt", "w") as f:
+    f.write(vtt.text)
+```
+
+### With Context Prompt
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("technical_presentation_french.mp3", "rb")
+
+translation = client.audio.translations.create(
+    model="whisper-1",
+    file=audio_file,
+    prompt="This is a technical presentation about artificial intelligence and machine learning."
+)
+
+print(translation.text)
+```
+
+### Batch Translation
+
+```python
+from portkey_ai import Portkey
+from pathlib import Path
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_dir = Path("foreign_audio")
+
+for audio_file_path in audio_dir.glob("*.mp3"):
+    with open(audio_file_path, "rb") as audio_file:
+        translation = client.audio.translations.create(
+            model="whisper-1",
+            file=audio_file
+        )
+        
+        # Save English translation
+        output_path = audio_file_path.with_suffix(".en.txt")
+        output_path.write_text(translation.text)
+        print(f"Translated: {audio_file_path.name}")
+```
+
+### Compare Transcription vs Translation
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file_path = "spanish_audio.mp3"
+
+# Get original transcription
+with open(audio_file_path, "rb") as audio_file:
+    transcription = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=audio_file,
+        language="es"
+    )
+
+print("Original (Spanish):")
+print(transcription.text)
+print("\n" + "="*50 + "\n")
+
+# Get English translation
+with open(audio_file_path, "rb") as audio_file:
+    translation = client.audio.translations.create(
+        model="whisper-1",
+        file=audio_file
+    )
+
+print("Translation (English):")
+print(translation.text)
+```
+
+### Real-time Translation Pipeline
+
+```python
+from portkey_ai import Portkey
+import tempfile
+import os
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+def translate_audio_stream(audio_chunks, output_file="translation.txt"):
+    """
+    Translate audio chunks in real-time
+    """
+    translations = []
+    
+    for i, chunk in enumerate(audio_chunks):
+        # Save chunk to temporary file
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
+            temp_file.write(chunk)
+            temp_path = temp_file.name
+        
+        try:
+            # Translate chunk
+            with open(temp_path, "rb") as audio_file:
+                translation = client.audio.translations.create(
+                    model="whisper-1",
+                    file=audio_file
+                )
+                translations.append(translation.text)
+                print(f"Chunk {i+1}: {translation.text}")
+        finally:
+            # Clean up temp file
+            os.unlink(temp_path)
+    
+    # Save all translations
+    with open(output_file, "w") as f:
+        f.write("\n".join(translations))
+    
+    return translations
+```
+
+### Detect Language and Translate
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file_path = "unknown_language.mp3"
+
+# First detect language with transcription
+with open(audio_file_path, "rb") as audio_file:
+    transcription = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=audio_file,
+        response_format="verbose_json"
+    )
+
+detected_language = transcription.language
+print(f"Detected language: {detected_language}")
+
+# If not English, translate
+if detected_language != "en":
+    with open(audio_file_path, "rb") as audio_file:
+        translation = client.audio.translations.create(
+            model="whisper-1",
+            file=audio_file
+        )
+    print(f"\nTranslation to English:\n{translation.text}")
+else:
+    print(f"\nAlready in English:\n{transcription.text}")
+```
+
+## Difference from Transcription
+
+- **Transcription**: Converts speech to text in the same language
+- **Translation**: Converts speech from any language to English text
+
+```python
+# Transcription - preserves original language
+transcription = client.audio.transcriptions.create(
+    model="whisper-1",
+    file=french_audio,
+    language="fr"  # Returns French text
+)
+
+# Translation - always returns English
+translation = client.audio.translations.create(
+    model="whisper-1",
+    file=french_audio  # Returns English text
+)
+```
+
+## Supported Source Languages
+
+Whisper can translate from 90+ languages to English, including:
+- Spanish, French, German, Italian, Portuguese
+- Chinese, Japanese, Korean, Hindi, Arabic
+- Russian, Turkish, Polish, Dutch, Swedish
+- And many more...
+
+## Best Practices
+
+1. **Audio Quality**: Use clear audio for better translation accuracy
+2. **File Size**: Keep files under 25 MB (split longer audio if needed)
+3. **Use Prompts**: Provide English context for technical terms
+4. **Format Selection**: Use `verbose_json` to see source language detected
+5. **Batch Processing**: Process multiple files efficiently
+
+## Use Cases
+
+- **International Content**: Translate foreign podcasts and videos to English
+- **Multilingual Meetings**: Convert non-English meetings to English transcripts
+- **Customer Support**: Translate customer calls from various languages
+- **Language Learning**: Create English versions of foreign language content
+- **Media Localization**: Generate English subtitles for foreign videos
+- **Research**: Translate interviews and recordings for analysis

@@ -1,0 +1,400 @@
+---
+title: "Configs"
+description: "Gateway configuration system for routing, retries, and guardrails"
+---
+
+Configs are the core mechanism for controlling how the Portkey AI Gateway processes requests. They define routing rules, retry policies, caching behavior, guardrails, and more.
+
+## Config Structure
+
+A config is a JSON object that can be passed via headers or in the request body. Configs support both snake_case and camelCase keys.
+
+### Basic Config
+
+```json
+{
+  "provider": "openai",
+  "api_key": "sk-..."
+}
+```
+
+### Complete Config Example
+
+```json
+{
+  "strategy": {
+    "mode": "fallback",
+    "on_status_codes": [429, 500, 502, 503]
+  },
+  "targets": [
+    {
+      "provider": "openai",
+      "api_key": "sk-...",
+      "retry": {
+        "attempts": 3,
+        "on_status_codes": [429, 500]
+      },
+      "request_timeout": 30000,
+      "cache": {
+        "mode": "simple",
+        "max_age": 3600000
+      },
+      "input_guardrails": [
+        {
+          "default.contains": {
+            "operator": "none",
+            "words": ["sensitive-info"]
+          },
+          "deny": true
+        }
+      ],
+      "output_guardrails": [
+        {
+          "default.contains": {
+            "operator": "none",
+            "words": ["restricted"]
+          },
+          "deny": true
+        }
+      ]
+    },
+    {
+      "provider": "anthropic",
+      "api_key": "sk-ant-..."
+    }
+  ]
+}
+```
+
+## Config Fields
+
+### Provider Configuration
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `provider` | string | Provider name (e.g., "openai", "anthropic", "azure-openai") |
+| `api_key` | string | Provider API key |
+| `virtual_key` | string | Portkey virtual key for secure key management |
+| `custom_host` | string | Custom endpoint URL for provider |
+
+### Strategy Configuration
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `strategy.mode` | string | Routing mode: "single", "fallback", "loadbalance", "conditional" |
+| `strategy.on_status_codes` | number[] | Status codes that trigger fallback (fallback mode only) |
+| `strategy.conditions` | array | Conditional routing rules (conditional mode only) |
+| `strategy.default` | string | Default target for conditional routing |
+
+### Retry Configuration
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `retry.attempts` | number | Maximum retry attempts (0-5) |
+| `retry.on_status_codes` | number[] | Status codes that trigger retry |
+| `retry.use_retry_after_header` | boolean | Respect provider's Retry-After header (default: false) |
+
+<Note>
+Retry attempts are capped at 5 to prevent excessive retry loops. The gateway uses exponential backoff between retries.
+</Note>
+
+See [Retries](/features/retries) for detailed retry configuration.
+
+### Cache Configuration
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `cache.mode` | string | "simple" or "semantic" |
+| `cache.max_age` | number | Cache TTL in milliseconds |
+
+<Warning>
+Streaming requests are not cached. The cache middleware automatically skips streaming requests.
+</Warning>
+
+See [Caching](/concepts/caching) for detailed cache configuration.
+
+### Timeout Configuration
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `request_timeout` | number | Request timeout in milliseconds |
+
+When a request exceeds the timeout, the gateway returns a 408 status with a timeout error.
+
+Source: `src/handlers/retryHandler.ts:4-50`
+
+### Guardrails Configuration
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `input_guardrails` | array | Input validation rules executed before provider request |
+| `output_guardrails` | array | Output validation rules executed after provider response |
+| `before_request_hooks` | array | Custom hooks executed before request |
+| `after_request_hooks` | array | Custom hooks executed after response |
+
+See [Guardrails](/concepts/guardrails) for detailed guardrail configuration.
+
+## Provider-Specific Fields
+
+### Azure OpenAI
+
+```json
+{
+  "provider": "azure-openai",
+  "api_key": "...",
+  "azure_model_name": "gpt-4",
+  "azure_auth_mode": "api_key",
+  "resource_name": "your-resource",
+  "deployment_id": "your-deployment",
+  "api_version": "2024-02-15-preview"
+}
+```
+
+### Google Vertex AI
+
+```json
+{
+  "provider": "vertex-ai",
+  "vertex_project_id": "your-project-id",
+  "vertex_region": "us-central1",
+  "api_key": "ya29...",
+  "vertex_service_account_json": {
+    "type": "service_account",
+    "project_id": "..."
+  }
+}
+```
+
+<Note>
+Vertex AI requires either `vertex_project_id` or `vertex_service_account_json` along with `vertex_region`.
+</Note>
+
+### AWS Bedrock
+
+```json
+{
+  "provider": "bedrock",
+  "aws_access_key_id": "AKIA...",
+  "aws_secret_access_key": "...",
+  "aws_region": "us-east-1",
+  "aws_session_token": "..." // Optional
+}
+```
+
+### OpenAI
+
+```json
+{
+  "provider": "openai",
+  "api_key": "sk-...",
+  "openai_organization": "org-...",
+  "openai_project": "proj_..."
+}
+```
+
+## Config Inheritance
+
+Configs support inheritance where child targets inherit properties from parent configs:
+
+```json
+{
+  "retry": { "attempts": 3 },
+  "request_timeout": 30000,
+  "strategy": { "mode": "loadbalance" },
+  "targets": [
+    {
+      "provider": "openai",
+      "api_key": "sk-1"
+      // Inherits retry and request_timeout from parent
+    },
+    {
+      "provider": "openai",
+      "api_key": "sk-2",
+      "retry": { "attempts": 5 }
+      // Overrides parent retry attempts
+    }
+  ]
+}
+```
+
+**Inheritance Rules:**
+- Child configs override parent configs for the same field
+- Arrays (like hooks and guardrails) are merged, not replaced
+- Nested targets can define their own strategies
+
+Source: `src/handlers/handlerUtils.ts:470-644`
+
+## Config Validation
+
+The gateway validates all configs using Zod schemas. Invalid configs are rejected with a 400 status code.
+
+### Validation Rules
+
+1. **Provider + API Key OR Strategy + Targets** - Configs must have either:
+   - A provider and api_key, OR
+   - A strategy with targets, OR  
+   - Cache/retry/timeout settings
+
+2. **Valid Provider** - Provider must be in the list of supported providers
+
+3. **Valid Strategy Mode** - Must be one of: single, loadbalance, fallback, conditional
+
+4. **Valid Cache Mode** - Must be "simple" or "semantic"
+
+5. **Custom Host Format** - Must be a valid URL if provided
+
+Source: `src/middlewares/requestValidator/schema/config.ts:11-179`
+
+## Passing Configs
+
+### Via Header
+
+```bash
+curl https://gateway.portkey.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-config: $(cat config.json | jq -c)" \
+  -d '{...}'
+```
+
+### Via SDK
+
+```python
+from portkey_ai import Portkey
+
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"provider": "openai", "api_key": "sk-..."},
+        {"provider": "anthropic", "api_key": "sk-ant-..."}
+    ]
+}
+
+client = Portkey(config=config)
+```
+
+### Via Environment
+
+Configs can also be stored in `conf.json` at the gateway root for system-wide defaults.
+
+```json
+{
+  "cache": false,
+  "plugins_enabled": ["default", "portkey"],
+  "integrations": [
+    {
+      "provider": "anthropic",
+      "slug": "dev_team_anthropic",
+      "credentials": {
+        "apiKey": "sk-ant-"
+      }
+    }
+  ]
+}
+```
+
+## Config Conversion
+
+The gateway automatically converts between snake_case and camelCase:
+
+```javascript
+// Both formats work identically
+const config1 = { "api_key": "sk-...", "request_timeout": 30000 }
+const config2 = { "apiKey": "sk-...", "requestTimeout": 30000 }
+```
+
+Source: `src/handlers/handlerUtils.ts:1007-1165`
+
+## Override Parameters
+
+You can override request parameters using `override_params`:
+
+```json
+{
+  "provider": "openai",
+  "api_key": "sk-...",
+  "override_params": {
+    "model": "gpt-4-turbo",
+    "temperature": 0.7,
+    "max_tokens": 1000
+  }
+}
+```
+
+Override params are merged with the request body, with override params taking precedence.
+
+## Forward Headers
+
+Specify which request headers should be forwarded to the provider:
+
+```json
+{
+  "provider": "openai",
+  "api_key": "sk-...",
+  "forward_headers": [
+    "user-agent",
+    "x-custom-header"
+  ]
+}
+```
+
+<Warning>
+The gateway automatically filters out Portkey-specific headers (prefixed with `x-portkey-`) from forwarded headers.
+</Warning>
+
+## OpenAI Compliance
+
+For strict OpenAI API compliance, set `strict_open_ai_compliance`:
+
+```json
+{
+  "provider": "anthropic",
+  "api_key": "sk-ant-...",
+  "strict_open_ai_compliance": true
+}
+```
+
+This removes provider-specific fields from responses that aren't part of the OpenAI spec.
+
+## Best Practices
+
+<CardGroup cols={2}>
+
+<Card title="Version Your Configs" icon="code-branch">
+  Store configs in version control to track changes and enable rollbacks.
+</Card>
+
+<Card title="Use Virtual Keys" icon="key">
+  Use virtual keys instead of hardcoding API keys for better security.
+</Card>
+
+<Card title="Test Configs Locally" icon="flask">
+  Test config changes locally before deploying to production.
+</Card>
+
+<Card title="Monitor Config Performance" icon="chart-line">
+  Track metrics for different configs to optimize routing and retries.
+</Card>
+
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Routing" icon="route" href="/concepts/routing">
+  Learn about routing strategies and modes.
+</Card>
+
+<Card title="Guardrails" icon="shield" href="/concepts/guardrails">
+  Configure input and output validation.
+</Card>
+
+<Card title="Caching" icon="database" href="/concepts/caching">
+  Optimize performance with response caching.
+</Card>
+
+<Card title="Load Balancing" icon="scale-balanced" href="/concepts/load-balancing">
+  Distribute load across providers and keys.
+</Card>
+
+</CardGroup>

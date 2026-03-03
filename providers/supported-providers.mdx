@@ -1,0 +1,261 @@
+---
+title: 'Supported Providers'
+description: 'Complete list of 78+ AI providers supported by Portkey AI Gateway'
+---
+
+## Overview
+
+Portkey AI Gateway supports **250+ LLMs** from **78+ providers**, giving you access to virtually every major AI model through a single, unified API.
+
+## All Supported Providers
+
+Here's the complete list of providers integrated with Portkey:
+
+### Major LLM Providers
+
+| Provider | Models | Features | Documentation |
+|----------|--------|----------|---------------|
+| **OpenAI** | GPT-4, GPT-3.5, o1, o3, DALL-E, Whisper | Chat, Completions, Embeddings, Images, Audio, Realtime | [OpenAI →](/providers/openai) |
+| **Anthropic** | Claude 3.5, Claude 3, Claude 2 | Chat, Vision, Function Calling | [Anthropic →](/providers/anthropic) |
+| **Azure OpenAI** | GPT-4, GPT-3.5, Embeddings | All OpenAI features via Azure | [Azure OpenAI →](/providers/azure-openai) |
+| **Google Gemini** | Gemini 2.0, Gemini 1.5 Pro/Flash | Chat, Vision, Embeddings, Function Calling | [Google Gemini →](/providers/google-gemini) |
+| **AWS Bedrock** | Claude, Llama, Mistral, Titan | Chat, Embeddings, Converse API | [AWS Bedrock →](/providers/bedrock) |
+| **Cohere** | Command, Command R, Command R+ | Chat, Embeddings, Rerank | [Cohere →](/providers/cohere) |
+| **Mistral AI** | Mistral Large, Medium, Small | Chat, Embeddings, Function Calling | [Mistral →](/providers/mistral) |
+
+### Specialized Providers
+
+| Provider | Models | Specialty | Documentation |
+|----------|--------|-----------|---------------|
+| **Together AI** | 100+ open models | Open-source models, Fast inference | [Together AI →](/providers/together-ai) |
+| **Anyscale** | Llama, Mistral, Mixtral | Open models with Endpoints | [Anyscale →](/providers/anyscale) |
+| **Groq** | Llama, Mixtral, Gemma | Ultra-fast inference (500+ tokens/s) | [Groq →](/providers/groq) |
+| **DeepInfra** | 100+ models | Cost-effective inference | [DeepInfra →](/providers/deepinfra) |
+| **Perplexity** | Sonar models | Search-augmented generation | [Perplexity →](/providers/perplexity) |
+| **Ollama** | Any local model | Local/self-hosted models | [Ollama →](/providers/ollama) |
+| **Fireworks AI** | 80+ models | Fast inference, fine-tuning | Fireworks AI |
+| **Replicate** | Thousands of models | Community models, image gen | Replicate |
+
+### Cloud AI Platforms
+
+| Provider | Description |
+|----------|-------------|
+| **Google Vertex AI** | Google Cloud AI platform with Gemini, PaLM |
+| **Azure AI Inference** | Microsoft's unified AI inference service |
+| **Sagemaker** | AWS machine learning platform |
+| **Workers AI** | Cloudflare's edge AI platform |
+
+### Additional Providers (A-Z)
+
+<AccordionGroup>
+  <Accordion title="A-C Providers">
+    - **302.AI** - AI model aggregation platform
+    - **AI21** - Jamba models
+    - **AIBadgr** - Educational AI platform
+    - **Anyscale** - Ray-based inference
+    - **Cerebras** - Ultra-fast inference
+    - **CometAPI** - API marketplace
+    - **Cohere** - Enterprise NLP
+    - **Cortex** - Snowflake AI
+  </Accordion>
+
+  <Accordion title="D-I Providers">
+    - **DashScope** - Alibaba AI platform
+    - **DeepBricks** - AI infrastructure
+    - **DeepInfra** - Cost-effective inference
+    - **DeepSeek** - Chinese AI models
+    - **Featherless AI** - Lightweight models
+    - **Fireworks AI** - Fast inference platform
+    - **HuggingFace** - 100,000+ models
+    - **Hyperbolic** - Decentralized AI
+    - **Inference.net** - Distributed inference
+    - **IO Intelligence** - Enterprise AI
+  </Accordion>
+
+  <Accordion title="J-O Providers">
+    - **Jina** - Embeddings and search
+    - **Kluster AI** - Cluster computing
+    - **Krutrim** - Indian AI models
+    - **Lambda** - GPU cloud
+    - **LemonfoxAI** - AI infrastructure
+    - **Lepton** - Simplified AI deployment
+    - **LingYi** - Chinese AI models
+    - **MatterAI** - Scientific AI
+    - **Meshy** - 3D generation
+    - **Milvus** - Vector database
+    - **Modal** - Serverless AI
+    - **MonsterAPI** - Cost-effective inference
+    - **Moonshot** - Chinese AI platform
+    - **NCompass** - Enterprise AI
+    - **Nebius** - Cloud AI platform
+    - **NextBit** - AI infrastructure
+    - **Nomic** - Embeddings (Nomic Embed)
+    - **Novita AI** - Multi-modal AI
+    - **NScale** - Scalable inference
+    - **Ollama** - Local models
+    - **OpenRouter** - Model router
+    - **Oracle** - Oracle Cloud AI
+    - **OVHcloud** - European cloud AI
+  </Accordion>
+
+  <Accordion title="P-Z Providers">
+    - **PaLM** - Google's legacy models
+    - **Perplexity AI** - Search-augmented LLMs
+    - **Predibase** - Fine-tuning platform
+    - **Qdrant** - Vector search
+    - **Recraft AI** - Image generation
+    - **Reka AI** - Multimodal models
+    - **Replicate** - Community model hosting
+    - **SambaNova** - AI hardware acceleration
+    - **Segmind** - Image generation
+    - **SiliconFlow** - Chinese AI platform
+    - **Stability AI** - Stable Diffusion
+    - **Together AI** - Open-source models
+    - **Triton** - NVIDIA Triton
+    - **Tripo3D** - 3D generation
+    - **Upstage** - Korean AI models
+    - **Voyage** - Embeddings
+    - **Workers AI** - Cloudflare edge AI
+    - **X.AI** - Grok models
+    - **Z.AI** - AI infrastructure
+    - **Zhipu** - Chinese AI (ChatGLM)
+  </Accordion>
+</AccordionGroup>
+
+## Provider Identifier Reference
+
+When making requests, use these provider identifiers:
+
+```python
+# Syntax
+client = Portkey(
+    provider="<provider-identifier>",
+    Authorization="<api-key>"
+)
+```
+
+### Common Provider Identifiers
+
+| Provider Name | Identifier | Example |
+|--------------|------------|----------|
+| OpenAI | `openai` | `provider="openai"` |
+| Anthropic | `anthropic` | `provider="anthropic"` |
+| Azure OpenAI | `azure-openai` | `provider="azure-openai"` |
+| Google Gemini | `google` | `provider="google"` |
+| AWS Bedrock | `bedrock` | `provider="bedrock"` |
+| Cohere | `cohere` | `provider="cohere"` |
+| Mistral AI | `mistral-ai` | `provider="mistral-ai"` |
+| Together AI | `together-ai` | `provider="together-ai"` |
+| Anyscale | `anyscale` | `provider="anyscale"` |
+| Groq | `groq` | `provider="groq"` |
+| Perplexity | `perplexity-ai` | `provider="perplexity-ai"` |
+| DeepInfra | `deepinfra` | `provider="deepinfra"` |
+| Ollama | `ollama` | `provider="ollama"` |
+| Fireworks AI | `fireworks-ai` | `provider="fireworks-ai"` |
+| Replicate | `replicate` | `provider="replicate"` |
+
+## Feature Support Matrix
+
+### Core Features
+
+| Provider | Chat | Streaming | Embeddings | Function Calling | Vision |
+|----------|------|-----------|------------|------------------|--------|
+| OpenAI | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Anthropic | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Azure OpenAI | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Google Gemini | ✅ | ✅ | ✅ | ✅ | ✅ |
+| AWS Bedrock | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Cohere | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Mistral | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Together AI | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Anyscale | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Groq | ✅ | ✅ | ❌ | ✅ | ✅ |
+| DeepInfra | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Perplexity | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Ollama | ✅ | ✅ | ✅ | ❌ | ✅ |
+
+### Special Features
+
+| Provider | Audio (TTS) | Audio (STT) | Image Generation | Batch API | Fine-tuning |
+|----------|------------|------------|------------------|-----------|-------------|
+| OpenAI | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Anthropic | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Azure OpenAI | ✅ | ✅ | ✅ | ✅ | ✅ |
+| AWS Bedrock | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Stability AI | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Fireworks AI | ❌ | ❌ | ✅ | ❌ | ✅ |
+
+## Request Examples
+
+### Basic Provider Switching
+
+```python
+from portkey_ai import Portkey
+
+# OpenAI
+openai_client = Portkey(provider="openai", Authorization="sk-***")
+response = openai_client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+
+# Switch to Anthropic - same code structure!
+anthropic_client = Portkey(provider="anthropic", Authorization="sk-ant-***")
+response = anthropic_client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+```
+
+### Multi-Provider Fallback
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"provider": "openai", "api_key": "sk-***"},
+        {"provider": "anthropic", "api_key": "sk-ant-***"},
+        {"provider": "google", "api_key": "***"},
+        {"provider": "groq", "api_key": "gsk-***"}
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Adding New Providers
+
+Portkey regularly adds new providers. To request a provider integration:
+
+1. **Check the GitHub issues** for existing requests
+2. **Open a feature request** with provider details
+3. **Contribute** a provider implementation
+
+<Card title="Contribute a Provider" icon="code-pull-request" href="https://github.com/portkey-ai/gateway">
+  Help add new providers to the gateway
+</Card>
+
+## Provider Pricing
+
+For detailed pricing information across all providers, visit:
+
+<Card title="Portkey Models" icon="dollar-sign" href="https://portkey.ai/models">
+  Browse pricing for 2,300+ models across 40+ providers
+</Card>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Provider Overview" icon="route" href="/providers/overview">
+    Learn how provider routing works
+  </Card>
+  <Card title="OpenAI" icon="openai" href="/providers/openai">
+    OpenAI integration guide
+  </Card>
+  <Card title="Fallbacks" icon="arrows-rotate" href="/essentials/fallbacks">
+    Set up automatic fallbacks
+  </Card>
+  <Card title="Load Balancing" icon="scale-balanced" href="/essentials/load-balancing">
+    Distribute across providers
+  </Card>
+</CardGroup>

@@ -1,0 +1,425 @@
+---
+title: 'Create Transcription'
+description: 'POST /v1/audio/transcriptions - Convert speech to text'
+---
+
+## Endpoint
+
+```
+POST /v1/audio/transcriptions
+```
+
+Transcribes audio into text using speech-to-text models.
+
+## Request
+
+### Headers
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `multipart/form-data`
+</ParamField>
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The AI provider to use (e.g., `openai`)
+</ParamField>
+
+<ParamField header="x-portkey-api-key" type="string" required>
+  Your API key for the specified provider
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="file" type="file" required>
+  The audio file to transcribe. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm. File size limit: 25 MB.
+</ParamField>
+
+<ParamField body="model" type="string" required>
+  The model to use for transcription (e.g., `whisper-1`)
+</ParamField>
+
+<ParamField body="language" type="string">
+  Language of the audio in ISO-639-1 format (e.g., `en`, `fr`, `es`). Providing the language improves accuracy and latency.
+</ParamField>
+
+<ParamField body="prompt" type="string">
+  Optional text to guide the model's style or continue a previous audio segment. Must match the audio language.
+</ParamField>
+
+<ParamField body="response_format" type="string" default="json">
+  Format of the response: `json`, `text`, `srt`, `verbose_json`, or `vtt`
+</ParamField>
+
+<ParamField body="temperature" type="number" default={0}>
+  Sampling temperature between 0 and 1. Higher values produce more random output.
+</ParamField>
+
+<ParamField body="timestamp_granularities" type="array">
+  Timestamp granularities: `word` and/or `segment` (only with `verbose_json` format)
+</ParamField>
+
+## Response
+
+### JSON Format (default)
+
+<ResponseField name="text" type="string">
+  The transcribed text
+</ResponseField>
+
+### Verbose JSON Format
+
+<ResponseField name="task" type="string">
+  Type of task (`transcribe`)
+</ResponseField>
+
+<ResponseField name="language" type="string">
+  Detected language
+</ResponseField>
+
+<ResponseField name="duration" type="number">
+  Duration of audio in seconds
+</ResponseField>
+
+<ResponseField name="text" type="string">
+  The transcribed text
+</ResponseField>
+
+<ResponseField name="segments" type="array">
+  Array of transcription segments with timestamps
+  
+  <ResponseField name="id" type="integer">
+    Segment ID
+  </ResponseField>
+  
+  <ResponseField name="start" type="number">
+    Start time in seconds
+  </ResponseField>
+  
+  <ResponseField name="end" type="number">
+    End time in seconds
+  </ResponseField>
+  
+  <ResponseField name="text" type="string">
+    Transcribed text for this segment
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="words" type="array">
+  Array of words with timestamps (when `timestamp_granularities` includes `word`)
+</ResponseField>
+
+## Examples
+
+### Basic Transcription
+
+```bash
+curl http://localhost:8787/v1/audio/transcriptions \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -F file="@audio.mp3" \
+  -F model="whisper-1"
+```
+
+### Response
+
+```json
+{
+  "text": "Hello, this is a test transcription of audio to text."
+}
+```
+
+### Python SDK
+
+```python
+from portkey_ai import Portkey
+from pathlib import Path
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("audio.mp3", "rb")
+
+transcription = client.audio.transcriptions.create(
+    model="whisper-1",
+    file=audio_file
+)
+
+print(transcription.text)
+```
+
+### JavaScript SDK
+
+```javascript
+import Portkey from 'portkey-ai';
+import fs from 'fs';
+
+const client = new Portkey({
+  provider: 'openai',
+  Authorization: 'sk-...'
+});
+
+const transcription = await client.audio.transcriptions.create({
+  file: fs.createReadStream('audio.mp3'),
+  model: 'whisper-1'
+});
+
+console.log(transcription.text);
+```
+
+### With Language Specification
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("french_audio.mp3", "rb")
+
+transcription = client.audio.transcriptions.create(
+    model="whisper-1",
+    file=audio_file,
+    language="fr"  # French
+)
+
+print(transcription.text)
+```
+
+### Verbose JSON with Timestamps
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("audio.mp3", "rb")
+
+transcription = client.audio.transcriptions.create(
+    model="whisper-1",
+    file=audio_file,
+    response_format="verbose_json",
+    timestamp_granularities=["segment"]
+)
+
+print(f"Language: {transcription.language}")
+print(f"Duration: {transcription.duration}s")
+print(f"\nText: {transcription.text}\n")
+
+for segment in transcription.segments:
+    print(f"[{segment.start:.2f}s - {segment.end:.2f}s] {segment.text}")
+```
+
+### Word-Level Timestamps
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("audio.mp3", "rb")
+
+transcription = client.audio.transcriptions.create(
+    model="whisper-1",
+    file=audio_file,
+    response_format="verbose_json",
+    timestamp_granularities=["word"]
+)
+
+for word in transcription.words:
+    print(f"{word.start:.2f}s: {word.word}")
+```
+
+### SRT Subtitle Format
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("video_audio.mp3", "rb")
+
+srt = client.audio.transcriptions.create(
+    model="whisper-1",
+    file=audio_file,
+    response_format="srt"
+)
+
+# Save as subtitle file
+with open("subtitles.srt", "w") as f:
+    f.write(srt.text)
+```
+
+### VTT Subtitle Format
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("video_audio.mp3", "rb")
+
+vtt = client.audio.transcriptions.create(
+    model="whisper-1",
+    file=audio_file,
+    response_format="vtt"
+)
+
+# Save as WebVTT subtitle file
+with open("subtitles.vtt", "w") as f:
+    f.write(vtt.text)
+```
+
+### With Prompt for Context
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_file = open("technical_audio.mp3", "rb")
+
+transcription = client.audio.transcriptions.create(
+    model="whisper-1",
+    file=audio_file,
+    prompt="This is a technical discussion about Portkey AI Gateway, APIs, and machine learning."
+)
+
+print(transcription.text)
+```
+
+### Process Multiple Files
+
+```python
+from portkey_ai import Portkey
+from pathlib import Path
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+audio_dir = Path("audio_files")
+
+for audio_file_path in audio_dir.glob("*.mp3"):
+    with open(audio_file_path, "rb") as audio_file:
+        transcription = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file
+        )
+        
+        # Save transcription
+        output_path = audio_file_path.with_suffix(".txt")
+        output_path.write_text(transcription.text)
+        print(f"Transcribed: {audio_file_path.name}")
+```
+
+### Real-time Transcription
+
+```python
+from portkey_ai import Portkey
+import pyaudio
+import wave
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+def record_audio(filename, duration=5):
+    """Record audio from microphone"""
+    CHUNK = 1024
+    FORMAT = pyaudio.paInt16
+    CHANNELS = 1
+    RATE = 16000
+    
+    p = pyaudio.PyAudio()
+    stream = p.open(format=FORMAT, channels=CHANNELS,
+                    rate=RATE, input=True,
+                    frames_per_buffer=CHUNK)
+    
+    print("Recording...")
+    frames = []
+    
+    for i in range(0, int(RATE / CHUNK * duration)):
+        data = stream.read(CHUNK)
+        frames.append(data)
+    
+    print("Finished recording")
+    
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+    
+    # Save
+    wf = wave.open(filename, 'wb')
+    wf.setnchannels(CHANNELS)
+    wf.setsampwidth(p.get_sample_size(FORMAT))
+    wf.setframerate(RATE)
+    wf.writeframes(b''.join(frames))
+    wf.close()
+
+# Record and transcribe
+record_audio("recording.wav", duration=5)
+
+with open("recording.wav", "rb") as audio_file:
+    transcription = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=audio_file
+    )
+    print(f"Transcription: {transcription.text}")
+```
+
+## Supported Audio Formats
+
+- **mp3**: MPEG audio
+- **mp4**: MPEG-4 audio
+- **mpeg**: MPEG audio
+- **mpga**: MPEG audio
+- **m4a**: MPEG-4 audio
+- **wav**: Waveform audio
+- **webm**: WebM audio
+
+## Supported Languages
+
+Whisper supports 90+ languages including:
+- English (en), Spanish (es), French (fr), German (de)
+- Chinese (zh), Japanese (ja), Korean (ko)
+- Arabic (ar), Hindi (hi), Portuguese (pt)
+- Russian (ru), Italian (it), Dutch (nl)
+
+[Full language list](https://github.com/openai/whisper#available-models-and-languages)
+
+## Best Practices
+
+1. **Specify Language**: Improves accuracy and reduces latency
+2. **Audio Quality**: Use clear audio with minimal background noise
+3. **File Size**: Keep files under 25 MB (split longer audio if needed)
+4. **Use Prompts**: Provide context for technical terms or proper nouns
+5. **Format Selection**: Use `verbose_json` for timestamps, `srt`/`vtt` for subtitles
+
+## Use Cases
+
+- **Meeting Transcriptions**: Convert meeting recordings to text
+- **Subtitles**: Generate subtitles for videos
+- **Voice Notes**: Transcribe voice memos and notes
+- **Accessibility**: Create text versions of audio content
+- **Content Analysis**: Process podcasts and interviews
+- **Call Center**: Transcribe customer service calls

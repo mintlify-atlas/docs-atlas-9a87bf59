@@ -1,0 +1,292 @@
+---
+title: 'Create Chat Completion'
+description: 'POST /v1/chat/completions - Generate chat completions'
+---
+
+## Endpoint
+
+```
+POST /v1/chat/completions
+```
+
+Creates a completion for the chat conversation using the specified model.
+
+## Request
+
+### Headers
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`
+</ParamField>
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The AI provider to use (e.g., `openai`, `anthropic`, `google`)
+</ParamField>
+
+<ParamField header="x-portkey-api-key" type="string" required>
+  Your API key for the specified provider
+</ParamField>
+
+<ParamField header="x-portkey-config" type="string">
+  Optional JSON config for routing, fallbacks, and guardrails
+</ParamField>
+
+### Body Parameters
+
+<ParamField body="model" type="string" required>
+  The model to use for completion (e.g., `gpt-4o-mini`, `claude-3-5-sonnet-20241022`)
+</ParamField>
+
+<ParamField body="messages" type="array" required>
+  Array of message objects with `role` and `content`
+  
+  ```json
+  [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello!"}
+  ]
+  ```
+</ParamField>
+
+<ParamField body="temperature" type="number" default={1}>
+  Sampling temperature between 0 and 2. Higher values make output more random.
+</ParamField>
+
+<ParamField body="max_tokens" type="integer">
+  Maximum number of tokens to generate
+</ParamField>
+
+<ParamField body="top_p" type="number" default={1}>
+  Nucleus sampling parameter. Alternative to temperature.
+</ParamField>
+
+<ParamField body="stream" type="boolean" default={false}>
+  Whether to stream the response
+</ParamField>
+
+<ParamField body="stop" type="string | array">
+  Up to 4 sequences where the API will stop generating
+</ParamField>
+
+<ParamField body="presence_penalty" type="number" default={0}>
+  Penalty for token presence (-2.0 to 2.0)
+</ParamField>
+
+<ParamField body="frequency_penalty" type="number" default={0}>
+  Penalty for token frequency (-2.0 to 2.0)
+</ParamField>
+
+<ParamField body="n" type="integer" default={1}>
+  Number of completions to generate
+</ParamField>
+
+<ParamField body="user" type="string">
+  Unique identifier for the end-user
+</ParamField>
+
+<ParamField body="tools" type="array">
+  List of tools the model can call
+</ParamField>
+
+<ParamField body="tool_choice" type="string | object">
+  Controls which tool the model should use
+</ParamField>
+
+<ParamField body="response_format" type="object">
+  Format of the response (e.g., `{"type": "json_object"}`)
+</ParamField>
+
+<ParamField body="seed" type="integer">
+  Seed for deterministic sampling
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Unique identifier for the completion
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  Object type, always `chat.completion`
+</ResponseField>
+
+<ResponseField name="created" type="integer">
+  Unix timestamp of creation
+</ResponseField>
+
+<ResponseField name="model" type="string">
+  The model used for completion
+</ResponseField>
+
+<ResponseField name="choices" type="array">
+  Array of completion choices
+  
+  <ResponseField name="index" type="integer">
+    Choice index
+  </ResponseField>
+  
+  <ResponseField name="message" type="object">
+    The generated message
+    
+    <ResponseField name="role" type="string">
+      Role of the message author (always `assistant`)
+    </ResponseField>
+    
+    <ResponseField name="content" type="string">
+      The message content
+    </ResponseField>
+    
+    <ResponseField name="tool_calls" type="array">
+      Tool calls made by the model
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="finish_reason" type="string">
+    Reason for completion: `stop`, `length`, `tool_calls`, or `content_filter`
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="usage" type="object">
+  Token usage information
+  
+  <ResponseField name="prompt_tokens" type="integer">
+    Number of tokens in the prompt
+  </ResponseField>
+  
+  <ResponseField name="completion_tokens" type="integer">
+    Number of tokens in the completion
+  </ResponseField>
+  
+  <ResponseField name="total_tokens" type="integer">
+    Total tokens used
+  </ResponseField>
+</ResponseField>
+
+## Examples
+
+### Basic Request
+
+```bash
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "What is the capital of France?"}
+    ]
+  }'
+```
+
+### Response
+
+```json
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1677652288,
+  "model": "gpt-4o-mini",
+  "choices": [{
+    "index": 0,
+    "message": {
+      "role": "assistant",
+      "content": "The capital of France is Paris."
+    },
+    "finish_reason": "stop"
+  }],
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 8,
+    "total_tokens": 28
+  }
+}
+```
+
+### Using Python SDK
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "What is the capital of France?"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+### Using JavaScript SDK
+
+```javascript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+  provider: 'openai',
+  Authorization: 'sk-...'
+});
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [
+    {role: 'system', content: 'You are a helpful assistant.'},
+    {role: 'user', content: 'What is the capital of France?'}
+  ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+### With Function Calling
+
+```bash
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "What is the weather in Boston?"}],
+    "tools": [{
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get the current weather in a location",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "location": {"type": "string"},
+            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+          },
+          "required": ["location"]
+        }
+      }
+    }]
+  }'
+```
+
+### With JSON Mode
+
+```bash
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{
+      "role": "user",
+      "content": "Extract the name and age: John is 30 years old"
+    }],
+    "response_format": {"type": "json_object"}
+  }'
+```

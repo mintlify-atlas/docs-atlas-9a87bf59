@@ -1,0 +1,110 @@
+---
+title: 'API Overview'
+description: 'Introduction to the Portkey AI Gateway API'
+---
+
+## Introduction
+
+The Portkey AI Gateway provides a unified API to route requests to 250+ LLMs with blazing fast performance. The API is OpenAI-compatible, making it easy to integrate with existing applications.
+
+## Base URL
+
+The base URL for all API requests depends on your deployment:
+
+```bash
+# Local development
+http://localhost:8787/v1
+
+# Portkey Cloud
+https://api.portkey.ai/v1
+
+# Self-hosted
+https://your-gateway-domain.com/v1
+```
+
+## OpenAI Compatibility
+
+The Portkey AI Gateway is fully compatible with OpenAI's API format. You can use any OpenAI SDK by simply changing the base URL:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8787/v1",
+    default_headers={
+        "x-portkey-provider": "openai",
+        "x-portkey-api-key": "your-openai-api-key"
+    }
+)
+```
+
+```javascript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'http://localhost:8787/v1',
+  defaultHeaders: {
+    'x-portkey-provider': 'openai',
+    'x-portkey-api-key': 'your-openai-api-key'
+  }
+});
+```
+
+## Request Format
+
+All requests follow the OpenAI API format with additional provider-specific headers:
+
+- **Content-Type**: `application/json`
+- **Provider Headers**: Specify which AI provider to use
+- **Request Body**: OpenAI-compatible JSON format
+
+## Response Format
+
+Responses follow the OpenAI response format:
+
+```json
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1677652288,
+  "model": "gpt-4o-mini",
+  "choices": [{
+    "index": 0,
+    "message": {
+      "role": "assistant",
+      "content": "Hello! How can I help you today?"
+    },
+    "finish_reason": "stop"
+  }],
+  "usage": {
+    "prompt_tokens": 9,
+    "completion_tokens": 9,
+    "total_tokens": 18
+  }
+}
+```
+
+## Supported Endpoints
+
+The gateway supports all major OpenAI API endpoints:
+
+- **/v1/chat/completions** - Chat completions
+- **/v1/completions** - Text completions
+- **/v1/embeddings** - Generate embeddings
+- **/v1/images/generations** - Generate images
+- **/v1/images/edits** - Edit images
+- **/v1/audio/speech** - Text-to-speech
+- **/v1/audio/transcriptions** - Speech-to-text
+- **/v1/audio/translations** - Audio translation
+- **/v1/files** - File operations
+- **/v1/batches** - Batch processing
+- **/v1/fine_tuning/jobs** - Fine-tuning jobs
+- **/v1/realtime** - WebSocket realtime API
+
+## Rate Limits
+
+Rate limits depend on the underlying provider. The gateway passes through provider rate limit headers.
+
+## Versioning
+
+The API version is included in the URL path (`/v1/`). The gateway maintains compatibility with OpenAI's latest stable API version.

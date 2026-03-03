@@ -1,0 +1,524 @@
+---
+title: "Installation"
+description: "Deploy Portkey AI Gateway with your preferred method"
+---
+
+## Deployment Options
+
+The AI Gateway can be deployed in multiple ways to suit your infrastructure needs:
+
+<CardGroup cols={3}>
+  <Card title="NPM/Bun" icon="node">
+    Quick local development
+  </Card>
+  <Card title="Docker" icon="docker">
+    Containerized deployment
+  </Card>
+  <Card title="Node.js Server" icon="server">
+    Self-hosted production server
+  </Card>
+  <Card title="Cloudflare Workers" icon="cloud">
+    Edge deployment
+  </Card>
+  <Card title="Kubernetes" icon="dharmachakra">
+    Scalable orchestration
+  </Card>
+  <Card title="Cloud Providers" icon="cloud-arrow-up">
+    AWS, Azure, GCP
+  </Card>
+</CardGroup>
+
+<Note>
+  For a fully managed solution without infrastructure concerns, consider [Portkey's hosted gateway](https://app.portkey.ai/) which processes billions of tokens daily in production.
+</Note>
+
+---
+
+## Quick Start (npx)
+
+The fastest way to get started:
+
+<Steps>
+  <Step title="Run with npx">
+    No installation required - just run:
+    
+    ```bash
+    npx @portkey-ai/gateway
+    ```
+    
+    Or with Bun:
+    
+    ```bash
+    bunx @portkey-ai/gateway
+    ```
+  </Step>
+  
+  <Step title="Verify it's running">
+    The gateway starts on port 8787:
+    
+    - **API**: `http://localhost:8787/v1`
+    - **Console**: `http://localhost:8787/public/`
+    
+    Test it:
+    
+    ```bash
+    curl http://localhost:8787
+    ```
+    
+    You should see: `AI Gateway says hey!`
+  </Step>
+  
+  <Step title="Make your first request">
+    Now follow the [quickstart guide](/quickstart) to make your first API call.
+  </Step>
+</Steps>
+
+<Tip>
+  This method is perfect for local development and testing. For production, use Docker or a Node.js server.
+</Tip>
+
+---
+
+## Docker
+
+Deploy using Docker for containerized production environments.
+
+<Steps>
+  <Step title="Run with Docker">
+    Pull and run the latest image from Docker Hub:
+    
+    ```bash
+    docker run --rm -p 8787:8787 portkeyai/gateway:latest
+    ```
+    
+    <Check>
+      The gateway is now running at `http://localhost:8787`
+    </Check>
+  </Step>
+  
+  <Step title="Run with environment variables">
+    Pass configuration via environment variables:
+    
+    ```bash
+    docker run --rm -p 8787:8787 \
+      -e REDIS_CONNECTION_STRING="redis://localhost:6379" \
+      portkeyai/gateway:latest
+    ```
+  </Step>
+  
+  <Step title="Build from source (optional)">
+    Clone the repository and build your own image:
+    
+    ```bash
+    git clone https://github.com/portkey-ai/gateway
+    cd gateway
+    docker build -t portkey-gateway .
+    docker run --rm -p 8787:8787 portkey-gateway
+    ```
+  </Step>
+</Steps>
+
+### Docker Compose
+
+For multi-container setups with Redis caching:
+
+<Steps>
+  <Step title="Download docker-compose.yaml">
+    ```bash
+    wget "https://raw.githubusercontent.com/Portkey-AI/gateway/main/docker-compose.yaml"
+    ```
+  </Step>
+  
+  <Step title="Start the services">
+    ```bash
+    docker compose up -d
+    ```
+    
+    This starts:
+    - AI Gateway on port 8787
+    - Redis for caching (if configured)
+  </Step>
+  
+  <Step title="View logs">
+    ```bash
+    docker compose logs -f gateway
+    ```
+  </Step>
+  
+  <Step title="Stop the services">
+    ```bash
+    docker compose down
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  The Docker image is built from the [Dockerfile](https://github.com/Portkey-AI/gateway/blob/main/Dockerfile) which uses a multi-stage build for optimal size.
+</Note>
+
+---
+
+## Node.js Server
+
+Run the gateway as a standalone Node.js application.
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/portkey-ai/gateway
+    cd gateway
+    ```
+  </Step>
+  
+  <Step title="Install dependencies">
+    ```bash
+    npm install
+    ```
+    
+    Or with Bun:
+    
+    ```bash
+    bun install
+    ```
+  </Step>
+  
+  <Step title="Build the project">
+    ```bash
+    npm run build
+    ```
+    
+    This compiles the TypeScript code and prepares the production bundle.
+  </Step>
+  
+  <Step title="Start the server">
+    ```bash
+    node build/start-server.js
+    ```
+    
+    Or use npm script:
+    
+    ```bash
+    npm run start:node
+    ```
+  </Step>
+  
+  <Step title="Configure (optional)">
+    Create a `conf.json` file to customize settings. See `conf_sample.json` for available options.
+    
+    You can also use environment variables:
+    
+    ```bash
+    export REDIS_CONNECTION_STRING="redis://localhost:6379"
+    node build/start-server.js
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+  For development, use `npm run dev:node` which includes hot-reload.
+</Tip>
+
+### Running as a Service
+
+Create a systemd service file for production:
+
+```ini /etc/systemd/system/portkey-gateway.service
+[Unit]
+Description=Portkey AI Gateway
+After=network.target
+
+[Service]
+Type=simple
+User=portkey
+WorkingDirectory=/opt/portkey-gateway
+ExecStart=/usr/bin/node /opt/portkey-gateway/build/start-server.js
+Restart=always
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl enable portkey-gateway
+sudo systemctl start portkey-gateway
+sudo systemctl status portkey-gateway
+```
+
+---
+
+## Cloudflare Workers
+
+Deploy to Cloudflare's edge network for low-latency global distribution.
+
+<Steps>
+  <Step title="Clone and setup">
+    ```bash
+    git clone https://github.com/portkey-ai/gateway
+    cd gateway
+    npm install
+    ```
+  </Step>
+  
+  <Step title="Configure Wrangler">
+    Make sure you have the [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) installed and authenticated:
+    
+    ```bash
+    npm install -g wrangler
+    wrangler login
+    ```
+  </Step>
+  
+  <Step title="Deploy to Cloudflare">
+    ```bash
+    npm run deploy
+    ```
+    
+    This builds and deploys the gateway to Cloudflare Workers.
+  </Step>
+  
+  <Step title="Get your worker URL">
+    Wrangler will output your worker URL:
+    
+    ```
+    https://your-worker.your-subdomain.workers.dev
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Cloudflare Workers have [request limits](https://developers.cloudflare.com/workers/platform/limits/) on the free tier. Consider upgrading for production use.
+</Note>
+
+---
+
+## Kubernetes
+
+Deploy to Kubernetes for production-grade orchestration.
+
+<Steps>
+  <Step title="Create deployment manifest">
+    Create `deployment.yaml`:
+    
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: portkey-gateway
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          app: portkey-gateway
+      template:
+        metadata:
+          labels:
+            app: portkey-gateway
+        spec:
+          containers:
+          - name: gateway
+            image: portkeyai/gateway:latest
+            ports:
+            - containerPort: 8787
+            env:
+            - name: NODE_ENV
+              value: "production"
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: portkey-gateway
+    spec:
+      type: LoadBalancer
+      ports:
+      - port: 80
+        targetPort: 8787
+      selector:
+        app: portkey-gateway
+    ```
+  </Step>
+  
+  <Step title="Apply to cluster">
+    ```bash
+    kubectl apply -f deployment.yaml
+    ```
+  </Step>
+  
+  <Step title="Verify deployment">
+    ```bash
+    kubectl get deployments
+    kubectl get services
+    kubectl get pods
+    ```
+  </Step>
+  
+  <Step title="Access the gateway">
+    Get the external IP:
+    
+    ```bash
+    kubectl get service portkey-gateway
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+  For production, consider adding:
+  - Horizontal Pod Autoscaling (HPA)
+  - Resource limits and requests
+  - Ingress controller for HTTPS
+  - ConfigMaps for configuration
+  - Secrets for API keys
+</Tip>
+
+---
+
+## AWS EC2
+
+Quick deployment to AWS EC2 using CloudFormation.
+
+<Steps>
+  <Step title="Use CloudFormation template">
+    The repository includes a CloudFormation template for one-click deployment:
+    
+    <a href="https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?stackName=portkey-gateway&templateURL=https://portkey-gateway-ec2-quicklaunch.s3.us-east-1.amazonaws.com/portkey-gateway-ec2-quicklaunch.template.yaml">
+      <img src="https://img.shields.io/badge/Deploy_to_EC2-232F3E?style=for-the-badge&logo=amazonwebservices&logoColor=white" alt="Deploy to AWS EC2" />
+    </a>
+  </Step>
+  
+  <Step title="Configure parameters">
+    Set:
+    - VPC ID
+    - Subnet ID
+    - Instance Type (t2.micro for testing, t3.small for production)
+  </Step>
+  
+  <Step title="Launch stack">
+    CloudFormation will:
+    - Launch an EC2 instance
+    - Install Docker
+    - Run the gateway container
+    - Configure security groups (port 8787)
+  </Step>
+  
+  <Step title="Access your gateway">
+    Get the public DNS from CloudFormation outputs:
+    
+    ```
+    http://<instance-public-dns>:8787
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Other Platforms
+
+### Replit
+
+Deploy with one click:
+
+[![Deploy on Replit](https://replit.com/badge?caption=Deploy%20on%20Replit)](https://replit.com/@portkey/AI-Gateway?v=1)
+
+### Zeabur
+
+Use the template:
+
+[![Deploy on Zeabur](https://zeabur.com/button.svg)](https://zeabur.com/templates/RU38E3)
+
+### Azure, GCP, OpenShift
+
+For enterprise deployments on:
+- Azure
+- Google Cloud Platform
+- Red Hat OpenShift
+- Other cloud providers
+
+See the [enterprise deployment guide](/deployment/enterprise) or [contact the team](https://calendly.com/portkey-ai/quick-meeting).
+
+---
+
+## Configuration
+
+### Environment Variables
+
+Common configuration options:
+
+| Variable | Description | Default |
+|----------|-------------|----------|
+| `PORT` | Server port | `8787` |
+| `REDIS_CONNECTION_STRING` | Redis URL for caching | - |
+| `NODE_ENV` | Environment mode | `development` |
+
+### Configuration File
+
+Create `conf.json` for advanced settings:
+
+```json
+{
+  "port": 8787,
+  "cache": {
+    "type": "redis",
+    "connection": "redis://localhost:6379"
+  }
+}
+```
+
+See `conf_sample.json` in the repository for all available options.
+
+---
+
+## Verification
+
+After installation, verify your deployment:
+
+<Steps>
+  <Step title="Health check">
+    ```bash
+    curl http://localhost:8787
+    ```
+    
+    Should return: `AI Gateway says hey!`
+  </Step>
+  
+  <Step title="Test API endpoint">
+    ```bash
+    curl http://localhost:8787/v1/chat/completions \
+      -H "Content-Type: application/json" \
+      -H "x-portkey-provider: openai" \
+      -H "Authorization: Bearer sk-***" \
+      -d '{
+        "model": "gpt-4o-mini",
+        "messages": [{"role": "user", "content": "test"}]
+      }'
+    ```
+  </Step>
+  
+  <Step title="Check the console">
+    Open `http://localhost:8787/public/` to view the web console.
+  </Step>
+</Steps>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Make Your First Request" icon="rocket" href="/quickstart">
+    Follow the quickstart to make your first API call
+  </Card>
+  <Card title="Configure Routing" icon="route" href="/concepts/routing">
+    Learn about routing, fallbacks, and load balancing
+  </Card>
+  <Card title="Add Guardrails" icon="shield" href="/concepts/guardrails">
+    Protect your AI apps with input/output validation
+  </Card>
+  <Card title="Production Deployment" icon="server" href="/deployment/overview">
+    Best practices for production deployments
+  </Card>
+</CardGroup>
+
+<Note>
+  **Need help?** Join our [Discord community](https://discord.gg/portkey) or check the [GitHub repository](https://github.com/portkey-ai/gateway).
+</Note>

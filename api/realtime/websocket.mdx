@@ -1,0 +1,404 @@
+---
+title: Realtime WebSocket API
+description: Bidirectional streaming communication with AI models via WebSocket
+---
+
+## Overview
+
+The Realtime API enables low-latency, multi-turn conversations with AI models over WebSocket connections. This is ideal for voice assistants, interactive applications, and real-time chat experiences.
+
+<Note>
+  The Realtime API is currently supported on Cloudflare Workers runtime. For Node.js, use the dedicated realtime handler.
+</Note>
+
+## Connection
+
+### WebSocket Endpoint
+
+```
+wss://your-gateway.com/v1/realtime
+```
+
+### Authentication
+
+Pass authentication as query parameters:
+
+```
+wss://your-gateway.com/v1/realtime?provider=openai&apiKey=YOUR_API_KEY&model=gpt-4o-realtime-preview
+```
+
+### Query Parameters
+
+<ParamField query="provider" type="string" required>
+  The provider to use (e.g., `openai`)
+</ParamField>
+
+<ParamField query="apiKey" type="string" required>
+  Your provider API key
+</ParamField>
+
+<ParamField query="model" type="string">
+  The model to use (default: `gpt-4o-realtime-preview`)
+</ParamField>
+
+## Event Types
+
+### Client Events
+
+Events sent from your application to the model:
+
+<ResponseField name="session.update" type="object">
+  Update session configuration
+  
+  <Expandable title="properties">
+    <ParamField body="modalities" type="array">
+      Supported modalities: `["text", "audio"]`
+    </ParamField>
+    
+    <ParamField body="instructions" type="string">
+      System instructions for the model
+    </ParamField>
+    
+    <ParamField body="voice" type="string">
+      Voice to use: `alloy`, `echo`, `shimmer`
+    </ParamField>
+    
+    <ParamField body="temperature" type="number">
+      Sampling temperature (0.0 - 1.0)
+    </ParamField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="input_audio_buffer.append" type="object">
+  Add audio data to the input buffer
+  
+  <Expandable title="properties">
+    <ParamField body="audio" type="string">
+      Base64-encoded audio data (PCM16, 24kHz, mono)
+    </ParamField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="input_audio_buffer.commit" type="object">
+  Commit the audio buffer for processing
+</ResponseField>
+
+<ResponseField name="conversation.item.create" type="object">
+  Add a message to the conversation
+  
+  <Expandable title="properties">
+    <ParamField body="item" type="object">
+      The conversation item (message or function call)
+    </ParamField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="response.create" type="object">
+  Trigger a model response
+  
+  <Expandable title="properties">
+    <ParamField body="response" type="object">
+      Optional response configuration
+    </ParamField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="response.cancel" type="object">
+  Cancel an in-progress response
+</ResponseField>
+
+### Server Events
+
+Events sent from the model to your application:
+
+<ResponseField name="session.created" type="object">
+  Session was successfully created
+</ResponseField>
+
+<ResponseField name="session.updated" type="object">
+  Session configuration was updated
+</ResponseField>
+
+<ResponseField name="conversation.item.created" type="object">
+  A new conversation item was created
+</ResponseField>
+
+<ResponseField name="response.audio.delta" type="object">
+  Audio response chunk
+  
+  <Expandable title="properties">
+    <ResponseField name="delta" type="string">
+      Base64-encoded audio data
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="response.audio.done" type="object">
+  Audio response completed
+</ResponseField>
+
+<ResponseField name="response.text.delta" type="object">
+  Text response chunk
+  
+  <Expandable title="properties">
+    <ResponseField name="delta" type="string">
+      Text content
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="response.text.done" type="object">
+  Text response completed
+</ResponseField>
+
+<ResponseField name="response.done" type="object">
+  Response generation completed
+</ResponseField>
+
+<ResponseField name="error" type="object">
+  An error occurred
+  
+  <Expandable title="properties">
+    <ResponseField name="error" type="object">
+      Error details
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example
+
+### Basic Text Conversation
+
+<CodeGroup>
+
+```javascript JavaScript
+const ws = new WebSocket(
+    'wss://localhost:8787/v1/realtime?' +
+    'provider=openai&' +
+    'apiKey=YOUR_API_KEY&' +
+    'model=gpt-4o-realtime-preview'
+);
+
+ws.onopen = () => {
+    console.log('Connected to realtime API');
+    
+    // Configure session
+    ws.send(JSON.stringify({
+        type: 'session.update',
+        session: {
+            modalities: ['text'],
+            instructions: 'You are a helpful assistant.',
+            temperature: 0.8
+        }
+    }));
+    
+    // Create a conversation item
+    ws.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: {
+            type: 'message',
+            role: 'user',
+            content: [{
+                type: 'input_text',
+                text: 'Hello! How are you?'
+            }]
+        }
+    }));
+    
+    // Trigger response
+    ws.send(JSON.stringify({
+        type: 'response.create'
+    }));
+};
+
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    
+    if (data.type === 'response.text.delta') {
+        process.stdout.write(data.delta);
+    } else if (data.type === 'response.done') {
+        console.log('\nResponse complete');
+    } else if (data.type === 'error') {
+        console.error('Error:', data.error);
+    }
+};
+
+ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+};
+
+ws.onclose = () => {
+    console.log('Connection closed');
+};
+```
+
+```python Python
+import websocket
+import json
+import base64
+
+def on_message(ws, message):
+    data = json.loads(message)
+    
+    if data['type'] == 'response.text.delta':
+        print(data['delta'], end='', flush=True)
+    elif data['type'] == 'response.done':
+        print('\nResponse complete')
+    elif data['type'] == 'error':
+        print(f"Error: {data['error']}")
+
+def on_open(ws):
+    print('Connected to realtime API')
+    
+    # Configure session
+    ws.send(json.dumps({
+        'type': 'session.update',
+        'session': {
+            'modalities': ['text'],
+            'instructions': 'You are a helpful assistant.',
+            'temperature': 0.8
+        }
+    }))
+    
+    # Create conversation item
+    ws.send(json.dumps({
+        'type': 'conversation.item.create',
+        'item': {
+            'type': 'message',
+            'role': 'user',
+            'content': [{
+                'type': 'input_text',
+                'text': 'Hello! How are you?'
+            }]
+        }
+    }))
+    
+    # Trigger response
+    ws.send(json.dumps({
+        'type': 'response.create'
+    }))
+
+ws = websocket.WebSocketApp(
+    'wss://localhost:8787/v1/realtime?provider=openai&apiKey=YOUR_API_KEY&model=gpt-4o-realtime-preview',
+    on_message=on_message,
+    on_open=on_open
+)
+
+ws.run_forever()
+```
+
+</CodeGroup>
+
+### Audio Streaming
+
+```javascript
+const ws = new WebSocket(
+    'wss://localhost:8787/v1/realtime?provider=openai&apiKey=YOUR_API_KEY'
+);
+
+ws.onopen = () => {
+    // Configure for audio
+    ws.send(JSON.stringify({
+        type: 'session.update',
+        session: {
+            modalities: ['text', 'audio'],
+            voice: 'alloy',
+            input_audio_format: 'pcm16',
+            output_audio_format: 'pcm16'
+        }
+    }));
+    
+    // Stream audio from microphone
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            const audioContext = new AudioContext({ sampleRate: 24000 });
+            const source = audioContext.createMediaStreamSource(stream);
+            const processor = audioContext.createScriptProcessor(4096, 1, 1);
+            
+            processor.onaudioprocess = (e) => {
+                const audioData = e.inputBuffer.getChannelData(0);
+                const pcm16 = convertFloat32ToPCM16(audioData);
+                const base64Audio = btoa(String.fromCharCode(...pcm16));
+                
+                ws.send(JSON.stringify({
+                    type: 'input_audio_buffer.append',
+                    audio: base64Audio
+                }));
+            };
+            
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+        });
+};
+
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    
+    if (data.type === 'response.audio.delta') {
+        // Play audio chunk
+        const audioData = atob(data.delta);
+        playAudioChunk(audioData);
+    }
+};
+
+function convertFloat32ToPCM16(float32Array) {
+    const pcm16 = new Int16Array(float32Array.length);
+    for (let i = 0; i < float32Array.length; i++) {
+        const s = Math.max(-1, Math.min(1, float32Array[i]));
+        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return new Uint8Array(pcm16.buffer);
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Audio Format">
+    - Use PCM16 format at 24kHz sample rate for best compatibility
+    - Keep audio chunks around 100ms (2400 samples) for optimal latency
+    - Buffer audio on the client side to handle network jitter
+  </Accordion>
+  
+  <Accordion title="Connection Management">
+    - Implement reconnection logic with exponential backoff
+    - Monitor connection health with ping/pong frames
+    - Close connections gracefully when done
+  </Accordion>
+  
+  <Accordion title="Error Handling">
+    - Always handle `error` events from the server
+    - Implement timeout logic for responses
+    - Provide fallback behavior for connection failures
+  </Accordion>
+  
+  <Accordion title="Performance">
+    - Use audio compression where appropriate
+    - Implement voice activity detection to reduce unnecessary data
+    - Cache session configuration to avoid repeated updates
+  </Accordion>
+</AccordionGroup>
+
+## Supported Providers
+
+<Note>
+  Realtime API support:
+  - **OpenAI**: Full support with `gpt-4o-realtime-preview`
+  - **Azure OpenAI**: Supported on compatible deployments
+  
+  Check provider documentation for model availability and pricing.
+</Note>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Chat Completions" icon="message" href="/api/chat/completions">
+    Standard chat API
+  </Card>
+  <Card title="Audio Speech" icon="microphone" href="/api/audio/speech">
+    Text-to-speech API
+  </Card>
+  <Card title="Streaming" icon="tower-broadcast" href="/features/streaming">
+    HTTP streaming guide
+  </Card>
+</CardGroup>

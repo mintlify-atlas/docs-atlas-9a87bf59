@@ -1,0 +1,86 @@
+---
+title: Deployment Options
+description: Choose the best deployment method for your Portkey AI Gateway
+---
+
+The Portkey AI Gateway can be deployed in multiple ways to suit your infrastructure needs. Choose from managed services, self-hosted options, or enterprise deployments.
+
+## Deployment Methods
+
+<CardGroup cols={2}>
+  <Card title="Docker" icon="docker" href="/deployment/docker">
+    Run the gateway using Docker or Docker Compose for quick setup
+  </Card>
+  
+  <Card title="Node.js" icon="node-js" href="/deployment/nodejs">
+    Deploy as a standalone Node.js server with npm or bun
+  </Card>
+  
+  <Card title="Cloudflare Workers" icon="cloudflare" href="/deployment/cloudflare">
+    Deploy to Cloudflare's edge network for global distribution
+  </Card>
+  
+  <Card title="Kubernetes" icon="kubernetes" href="/deployment/kubernetes">
+    Deploy to Kubernetes clusters with our deployment manifests
+  </Card>
+  
+  <Card title="Enterprise" icon="building" href="/deployment/enterprise">
+    Private cloud deployments with advanced security and support
+  </Card>
+</CardGroup>
+
+## Managed Deployment
+
+Portkey runs this same Gateway on our API and processes **billions of tokens** daily. Portkey's API is in production with companies like Postman, Haptik, Turing, MultiOn, SiteGPT, and more.
+
+<Card title="Sign up for managed deployment" icon="rocket" href="https://app.portkey.ai/">
+  Get started with Portkey's managed service - no infrastructure required
+</Card>
+
+### Why Choose Managed?
+
+- Zero infrastructure management
+- Automatic scaling and updates
+- 99.99% uptime SLA
+- Built-in monitoring and analytics
+- Production-ready from day one
+
+## Self-Hosted Benefits
+
+- **Complete Control** - Full control over your infrastructure and data
+- **Data Privacy** - Keep all data within your environment
+- **Customization** - Modify and extend the gateway as needed
+- **Cost Optimization** - Pay only for your infrastructure costs
+- **Compliance** - Meet specific regulatory requirements
+
+## Quick Start
+
+The fastest way to get started with self-hosting:
+
+<CodeGroup>
+```bash npm
+npx @portkey-ai/gateway
+```
+
+```bash bun
+bunx @portkey-ai/gateway
+```
+
+```bash docker
+docker run -p 8787:8787 portkeyai/gateway:latest
+```
+</CodeGroup>
+
+The gateway will start on `http://localhost:8787` by default.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Learn how to configure the gateway
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api-reference">
+    Explore the API endpoints
+  </Card>
+</CardGroup>

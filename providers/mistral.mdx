@@ -1,0 +1,396 @@
+---
+title: 'Mistral AI'
+description: 'Integrate Mistral models including Mistral Large, Medium, and Small with function calling support'
+---
+
+## Overview
+
+Mistral AI provides open-weight and commercial models with strong performance, efficient inference, and competitive pricing. Access Mistral through Portkey for European-hosted AI with excellent multilingual capabilities.
+
+**Base URL:** `https://api.mistral.ai/v1`
+
+## Supported Features
+
+- ✅ Chat Completions
+- ✅ Streaming
+- ✅ Embeddings
+- ✅ Function Calling
+- ✅ JSON Mode
+- ✅ Fill-in-the-middle (FIM)
+- ❌ Vision (not yet available)
+- ❌ Image Generation
+- ❌ Fine-tuning
+
+## Quick Start
+
+### Chat Completions
+
+<CodeGroup>
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="mistral-ai",
+    Authorization="***"  # Your Mistral API key
+)
+
+response = client.chat.completions.create(
+    model="mistral-large-latest",
+    messages=[
+        {"role": "user", "content": "Explain the Mistral models"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "mistral-ai",
+    Authorization: "***"  // Your Mistral API key
+});
+
+const response = await client.chat.completions.create({
+    model: "mistral-large-latest",
+    messages: [
+        {role: "user", content: "Explain the Mistral models"}
+    ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: mistral-ai" \
+  -H "Authorization: Bearer ***" \
+  -d '{
+    "model": "mistral-large-latest",
+    "messages": [
+      {"role": "user", "content": "Explain the Mistral models"}
+    ]
+  }'
+```
+</CodeGroup>
+
+### Streaming
+
+```python
+stream = client.chat.completions.create(
+    model="mistral-large-latest",
+    messages=[{"role": "user", "content": "Write a poem about Paris"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+## Available Models
+
+### Commercial Models
+
+| Model | Context | Description | Best For |
+|-------|---------|-------------|----------|
+| `mistral-large-latest` | 128K | Most capable Mistral model | Complex reasoning, multilingual |
+| `mistral-large-2411` | 128K | Latest Mistral Large | Production applications |
+| `mistral-large-2407` | 128K | July 2024 version | Stable release |
+| `mistral-medium-latest` | 32K | Balanced performance | General purpose |
+| `mistral-small-latest` | 32K | Fast and efficient | Simple tasks, high volume |
+
+### Open-Weight Models
+
+| Model | Context | Description |
+|-------|---------|-------------|
+| `open-mistral-nemo` | 128K | Latest open model |
+| `open-mixtral-8x22b` | 64K | Mixture of Experts (MoE) |
+| `open-mixtral-8x7b` | 32K | Efficient MoE |
+| `open-mistral-7b` | 32K | Compact model |
+
+### Specialized Models
+
+| Model | Type | Description |
+|-------|------|-------------|
+| `codestral-latest` | Code | Code generation |
+| `codestral-mamba-latest` | Code | Efficient code model |
+| `mistral-embed` | Embeddings | Text embeddings (1024 dims) |
+
+<Note>
+  **Mistral excels at:**
+  - **Multilingual tasks** (French, English, Spanish, German, Italian)
+  - **Code generation** with Codestral
+  - **Efficient inference** with MoE architecture
+  - **European data residency** (GDPR compliant)
+  - **Instruction following** and function calling
+</Note>
+
+## Configuration Options
+
+### Headers
+
+```python
+client = Portkey(
+    provider="mistral-ai",
+    Authorization="***"  # Bearer token format
+)
+```
+
+| Header | Description | Required |
+|--------|-------------|----------|
+| `Authorization` | Mistral API key (Bearer token) | Yes |
+
+## Advanced Features
+
+### Function Calling
+
+```python
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather for a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City name"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"]
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model="mistral-large-latest",
+    messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+    tools=tools,
+    tool_choice="auto"
+)
+
+if response.choices[0].message.tool_calls:
+    tool_call = response.choices[0].message.tool_calls[0]
+    print(f"Function: {tool_call.function.name}")
+    print(f"Arguments: {tool_call.function.arguments}")
+```
+
+### JSON Mode
+
+Force JSON output:
+
+```python
+response = client.chat.completions.create(
+    model="mistral-large-latest",
+    messages=[{
+        "role": "user",
+        "content": "List 3 French cities with their populations"
+    }],
+    response_format={"type": "json_object"}
+)
+
+import json
+result = json.loads(response.choices[0].message.content)
+print(result)
+```
+
+### System Prompts
+
+```python
+response = client.chat.completions.create(
+    model="mistral-large-latest",
+    messages=[
+        {
+            "role": "system",
+            "content": "You are a helpful Python programming expert. Always provide working code with explanations."
+        },
+        {
+            "role": "user",
+            "content": "How do I read a CSV file?"
+        }
+    ]
+)
+```
+
+### Fill-in-the-Middle (FIM)
+
+Special mode for code completion:
+
+```python
+client = Portkey(
+    provider="mistral-ai",
+    Authorization="***",
+    mistral_fim_completion="true"  # Enable FIM mode
+)
+
+response = client.completions.create(
+    model="codestral-latest",
+    prompt="def fibonacci(n):\n    # Complete this function\n    "
+)
+
+print(response.choices[0].text)
+```
+
+### Embeddings
+
+```python
+response = client.embeddings.create(
+    model="mistral-embed",
+    input="Mistral AI provides European-hosted AI models"
+)
+
+embedding = response.data[0].embedding
+print(f"Dimensions: {len(embedding)}")
+```
+
+Batch embeddings:
+
+```python
+response = client.embeddings.create(
+    model="mistral-embed",
+    input=[
+        "First document",
+        "Second document",
+        "Third document"
+    ]
+)
+
+for i, item in enumerate(response.data):
+    print(f"Document {i}: {len(item.embedding)} dimensions")
+```
+
+## Fallback Configuration
+
+Fallback to OpenAI:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {
+            "provider": "mistral-ai",
+            "api_key": "***",
+            "override_params": {"model": "mistral-large-latest"}
+        },
+        {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "override_params": {"model": "gpt-4o"}
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Load Balancing
+
+Balance between Mistral models:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "provider": "mistral-ai",
+            "api_key": "***",
+            "override_params": {"model": "mistral-large-latest"},
+            "weight": 0.3
+        },
+        {
+            "provider": "mistral-ai",
+            "api_key": "***",
+            "override_params": {"model": "mistral-small-latest"},
+            "weight": 0.7
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Error Handling
+
+```python
+from portkey_ai.exceptions import (
+    RateLimitError,
+    APIError,
+    AuthenticationError
+)
+
+try:
+    response = client.chat.completions.create(
+        model="mistral-large-latest",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+except RateLimitError as e:
+    print(f"Rate limit exceeded: {e}")
+except AuthenticationError as e:
+    print(f"Invalid API key: {e}")
+except APIError as e:
+    print(f"API error: {e}")
+```
+
+## Best Practices
+
+1. **Use latest versions** - Model IDs with "latest" get automatic updates
+2. **Leverage function calling** - Mistral has strong tool use capabilities
+3. **Try JSON mode** - For structured outputs
+4. **Use Codestral** - For code-specific tasks
+5. **Consider Small for volume** - Cost-effective for simple tasks
+6. **Enable streaming** - Better user experience
+7. **Use embeddings** - For semantic search and RAG
+8. **System prompts** - Guide behavior consistently
+
+## Context Windows
+
+| Model | Context Window | Notes |
+|-------|----------------|--------|
+| mistral-large-latest | 128K tokens | Full documents |
+| mistral-medium-latest | 32K tokens | Standard documents |
+| mistral-small-latest | 32K tokens | Standard documents |
+| open-mistral-nemo | 128K tokens | Long context open model |
+
+## European Data Residency
+
+Mistral AI is headquartered in France and offers EU data residency:
+
+- **GDPR compliant** by default
+- **European infrastructure** (Paris, Frankfurt)
+- **Data sovereignty** for EU customers
+- **No data training** on customer inputs
+
+## Pricing
+
+Mistral offers competitive pricing with open models:
+
+<Card title="Mistral Pricing" icon="dollar-sign" href="https://portkey.ai/models?provider=mistral">
+  View detailed pricing for all Mistral models
+</Card>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Function Calling" icon="function" href="/essentials/function-calling">
+    Advanced function calling
+  </Card>
+  <Card title="Fallbacks" icon="arrows-rotate" href="/essentials/fallbacks">
+    Fallback configurations
+  </Card>
+  <Card title="Code Generation" icon="code" href="/essentials/code-generation">
+    Using Codestral
+  </Card>
+  <Card title="JSON Mode" icon="brackets-curly" href="/essentials/json-mode">
+    Structured outputs
+  </Card>
+</CardGroup>

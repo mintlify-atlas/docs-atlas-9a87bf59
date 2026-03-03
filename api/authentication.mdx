@@ -1,0 +1,141 @@
+---
+title: 'Authentication'
+description: 'Authenticate requests to the Portkey AI Gateway'
+---
+
+## Overview
+
+The Portkey AI Gateway uses provider-specific headers for authentication. You provide your API keys for the AI providers you want to use via HTTP headers.
+
+## Provider Headers
+
+Authentication is handled through HTTP headers that specify the provider and API key:
+
+### Basic Authentication
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The AI provider to use (e.g., `openai`, `anthropic`, `azure-openai`, `google`)
+</ParamField>
+
+<ParamField header="x-portkey-api-key" type="string" required>
+  Your API key for the specified provider
+</ParamField>
+
+### Example: OpenAI
+
+```bash
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+### Example: Anthropic
+
+```bash
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: anthropic" \
+  -H "x-portkey-api-key: sk-ant-..." \
+  -d '{
+    "model": "claude-3-5-sonnet-20241022",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "max_tokens": 1024
+  }'
+```
+
+## Azure OpenAI Headers
+
+Azure OpenAI requires additional headers:
+
+<ParamField header="x-portkey-provider" type="string" required>
+  Set to `azure-openai`
+</ParamField>
+
+<ParamField header="x-portkey-api-key" type="string" required>
+  Your Azure OpenAI API key
+</ParamField>
+
+<ParamField header="x-portkey-azure-resource-name" type="string" required>
+  Your Azure resource name
+</ParamField>
+
+<ParamField header="x-portkey-azure-deployment-id" type="string" required>
+  Your Azure deployment ID
+</ParamField>
+
+<ParamField header="x-portkey-azure-api-version" type="string">
+  API version (defaults to latest)
+</ParamField>
+
+```bash
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: azure-openai" \
+  -H "x-portkey-api-key: your-azure-key" \
+  -H "x-portkey-azure-resource-name: your-resource" \
+  -H "x-portkey-azure-deployment-id: your-deployment" \
+  -d '{
+    "model": "gpt-4",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## Config-Based Authentication
+
+You can also pass authentication via the config header:
+
+<ParamField header="x-portkey-config" type="string">
+  JSON string containing provider and authentication details
+</ParamField>
+
+```bash
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H 'x-portkey-config: {"provider":"openai","api_key":"sk-..."}' \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## Virtual Keys
+
+<Note>
+  Virtual keys are available in the hosted and enterprise versions of Portkey.
+</Note>
+
+Instead of passing provider API keys directly, you can use virtual keys:
+
+```bash
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-virtual-key: pk-..." \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## Supported Providers
+
+The gateway supports authentication for 45+ providers including:
+
+- **openai** - OpenAI
+- **anthropic** - Anthropic
+- **azure-openai** - Azure OpenAI
+- **google** - Google Gemini
+- **bedrock** - AWS Bedrock
+- **cohere** - Cohere
+- **mistral** - Mistral AI
+- **together-ai** - Together AI
+- **anyscale** - Anyscale
+- **perplexity** - Perplexity
+- **groq** - Groq
+- **ollama** - Ollama
+
+See the [Providers documentation](/providers/overview) for the complete list.

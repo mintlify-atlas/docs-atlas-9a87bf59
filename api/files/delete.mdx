@@ -1,0 +1,124 @@
+---
+title: Delete File
+description: Delete a file
+---
+
+## DELETE /v1/files/:id
+
+Delete a file.
+
+<Warning>
+  Deleting a file is permanent and cannot be undone. Make sure the file is no longer needed before deleting.
+</Warning>
+
+## Authentication
+
+Requires provider authentication headers:
+
+```bash
+x-portkey-provider: openai
+Authorization: Bearer YOUR_OPENAI_API_KEY
+```
+
+## Request
+
+### Headers
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The provider to route the request to (e.g., `openai`, `azure-openai`)
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for the provider API
+</ParamField>
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The ID of the file to delete
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  The ID of the deleted file
+</ResponseField>
+
+<ResponseField name="object" type="string">
+  The object type, always "file"
+</ResponseField>
+
+<ResponseField name="deleted" type="boolean">
+  Whether the file was successfully deleted (always `true` on success)
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl -X DELETE https://localhost:8787/v1/files/file-abc123 \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer $OPENAI_API_KEY"
+```
+
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-***"
+)
+
+result = client.files.delete("file-abc123")
+if result.deleted:
+    print(f"File {result.id} deleted successfully")
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "openai",
+    Authorization: "sk-***"
+});
+
+const result = await client.files.delete("file-abc123");
+if (result.deleted) {
+    console.log(`File ${result.id} deleted successfully`);
+}
+```
+
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "id": "file-abc123",
+  "object": "file",
+  "deleted": true
+}
+```
+
+## Error Handling
+
+Common errors:
+
+- **404 Not Found**: The file ID doesn't exist
+- **403 Forbidden**: You don't have permission to delete this file
+- **409 Conflict**: The file is currently being used by another operation
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Upload File" icon="upload" href="/api/files/upload">
+    Upload a new file
+  </Card>
+  <Card title="List Files" icon="list" href="/api/files/list">
+    View all uploaded files
+  </Card>
+  <Card title="Retrieve File" icon="file" href="/api/files/retrieve">
+    Get file metadata
+  </Card>
+</CardGroup>

@@ -1,0 +1,432 @@
+---
+title: 'OpenAI'
+description: 'Integrate OpenAI models including GPT-4, GPT-3.5, o1, DALL-E, and Whisper through Portkey'
+---
+
+## Overview
+
+OpenAI is one of the leading AI providers, offering powerful language models (GPT-4, GPT-3.5, o1), image generation (DALL-E), speech (Whisper, TTS), and more. Portkey provides full support for all OpenAI capabilities.
+
+**Base URL:** `https://api.openai.com/v1`
+
+## Supported Features
+
+- ✅ Chat Completions (including streaming)
+- ✅ Completions (legacy)
+- ✅ Embeddings
+- ✅ Image Generation (DALL-E)
+- ✅ Image Editing
+- ✅ Text-to-Speech (TTS)
+- ✅ Speech-to-Text (Whisper transcription)
+- ✅ Audio Translation
+- ✅ Realtime API (WebSocket)
+- ✅ Function Calling & Tools
+- ✅ Vision (GPT-4 Vision)
+- ✅ Batch API
+- ✅ Fine-tuning
+- ✅ File Operations
+
+## Quick Start
+
+### Chat Completions
+
+<CodeGroup>
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-***"  # Your OpenAI API key
+)
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "What is the capital of France?"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "openai",
+    Authorization: "sk-***"  // Your OpenAI API key
+});
+
+const response = await client.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+        {role: "system", content: "You are a helpful assistant."},
+        {role: "user", content: "What is the capital of France?"}
+    ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer sk-***" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "What is the capital of France?"}
+    ]
+  }'
+```
+</CodeGroup>
+
+### Streaming Responses
+
+<CodeGroup>
+```python Python
+stream = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Count from 1 to 5"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+```javascript JavaScript
+const stream = await client.chat.completions.create({
+    model: "gpt-4o",
+    messages: [{role: "user", content: "Count from 1 to 5"}],
+    stream: true
+});
+
+for await (const chunk of stream) {
+    if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content);
+    }
+}
+```
+</CodeGroup>
+
+## Popular Models
+
+| Model | Context Window | Description | Best For |
+|-------|----------------|-------------|----------|
+| `gpt-4o` | 128K tokens | Latest GPT-4 Omni model | General purpose, multimodal |
+| `gpt-4o-mini` | 128K tokens | Faster, cost-effective GPT-4 | High-volume tasks |
+| `gpt-4-turbo` | 128K tokens | Enhanced GPT-4 | Complex reasoning |
+| `gpt-3.5-turbo` | 16K tokens | Fast and efficient | Simple tasks, high throughput |
+| `o1-preview` | 128K tokens | Advanced reasoning | Math, science, coding |
+| `o3-mini` | 128K tokens | Efficient reasoning | Balanced performance |
+| `text-embedding-3-large` | 8K tokens | Latest embeddings | Semantic search, RAG |
+| `dall-e-3` | N/A | Image generation | High-quality images |
+| `whisper-1` | N/A | Speech-to-text | Transcription |
+| `tts-1` | N/A | Text-to-speech | Voice generation |
+
+## Configuration Options
+
+### Headers
+
+```python
+client = Portkey(
+    provider="openai",
+    Authorization="sk-***",
+    openai_organization="org-***",      # Optional: Organization ID
+    openai_project="proj_***",          # Optional: Project ID
+    openai_beta="assistants=v2"         # Optional: Beta features
+)
+```
+
+| Header | Description | Required |
+|--------|-------------|----------|
+| `Authorization` | OpenAI API key (Bearer token) | Yes |
+| `openai_organization` | Organization ID | No |
+| `openai_project` | Project ID | No |
+| `openai_beta` | Beta feature flags | No |
+
+## Advanced Features
+
+### Function Calling
+
+```python
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather in a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City name"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"]
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+    tools=tools,
+    tool_choice="auto"
+)
+```
+
+### Vision (GPT-4 Vision)
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What's in this image?"},
+            {
+                "type": "image_url",
+                "image_url": {"url": "https://example.com/image.jpg"}
+            }
+        ]
+    }]
+)
+```
+
+### Embeddings
+
+```python
+response = client.embeddings.create(
+    model="text-embedding-3-large",
+    input="The quick brown fox jumps over the lazy dog"
+)
+
+embedding = response.data[0].embedding
+print(f"Embedding dimension: {len(embedding)}")
+```
+
+### Image Generation (DALL-E)
+
+```python
+response = client.images.generate(
+    model="dall-e-3",
+    prompt="A futuristic city with flying cars at sunset",
+    size="1024x1024",
+    quality="hd",
+    n=1
+)
+
+image_url = response.data[0].url
+print(f"Generated image: {image_url}")
+```
+
+### Text-to-Speech
+
+```python
+response = client.audio.speech.create(
+    model="tts-1",
+    voice="alloy",
+    input="Hello! This is a text-to-speech example."
+)
+
+# Save the audio file
+with open("output.mp3", "wb") as f:
+    f.write(response.content)
+```
+
+### Speech-to-Text (Whisper)
+
+```python
+with open("audio.mp3", "rb") as audio_file:
+    response = client.audio.transcriptions.create(
+        model="whisper-1",
+        file=audio_file,
+        language="en"
+    )
+    
+print(response.text)
+```
+
+## Fallback Configuration
+
+Use Anthropic as fallback for OpenAI:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "override_params": {"model": "gpt-4o"}
+        },
+        {
+            "provider": "anthropic",
+            "api_key": "sk-ant-***",
+            "override_params": {"model": "claude-3-5-sonnet-20241022"}
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+
+response = client.chat.completions.create(
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+## Load Balancing
+
+Distribute requests between OpenAI and Azure OpenAI:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "weight": 0.5
+        },
+        {
+            "provider": "azure-openai",
+            "api_key": "***",
+            "resource_name": "my-resource",
+            "deployment_id": "gpt-4",
+            "api_version": "2024-02-15-preview",
+            "weight": 0.5
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Batch API
+
+```python
+# Create a batch job
+response = client.batches.create(
+    input_file_id="file-abc123",
+    endpoint="/v1/chat/completions",
+    completion_window="24h"
+)
+
+batch_id = response.id
+
+# Retrieve batch status
+batch = client.batches.retrieve(batch_id)
+print(f"Status: {batch.status}")
+```
+
+## Error Handling
+
+```python
+from portkey_ai.exceptions import (
+    RateLimitError,
+    APIError,
+    AuthenticationError
+)
+
+try:
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+except RateLimitError as e:
+    print(f"Rate limit exceeded: {e}")
+except AuthenticationError as e:
+    print(f"Authentication failed: {e}")
+except APIError as e:
+    print(f"API error: {e}")
+```
+
+## Request & Response Format
+
+### Request
+
+```json
+{
+  "model": "gpt-4o",
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "Hello!"}
+  ],
+  "temperature": 0.7,
+  "max_tokens": 150,
+  "top_p": 1,
+  "frequency_penalty": 0,
+  "presence_penalty": 0
+}
+```
+
+### Response
+
+```json
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1677652288,
+  "model": "gpt-4o",
+  "choices": [{
+    "index": 0,
+    "message": {
+      "role": "assistant",
+      "content": "Hello! How can I assist you today?"
+    },
+    "finish_reason": "stop"
+  }],
+  "usage": {
+    "prompt_tokens": 20,
+    "completion_tokens": 10,
+    "total_tokens": 30
+  }
+}
+```
+
+## Best Practices
+
+1. **Use streaming** for long responses to improve user experience
+2. **Implement retry logic** with exponential backoff for rate limits
+3. **Cache embeddings** to reduce costs and latency
+4. **Use gpt-4o-mini** for high-volume, simpler tasks
+5. **Set max_tokens** to control costs and response length
+6. **Use system messages** to guide model behavior consistently
+7. **Implement fallbacks** to other providers for reliability
+
+## Pricing
+
+For up-to-date OpenAI pricing, visit:
+
+<Card title="OpenAI Pricing" icon="dollar-sign" href="https://portkey.ai/models?provider=openai">
+  View detailed pricing for all OpenAI models
+</Card>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Azure OpenAI" icon="microsoft" href="/providers/azure-openai">
+    Use OpenAI models through Azure
+  </Card>
+  <Card title="Fallback Routing" icon="arrows-rotate" href="/essentials/fallbacks">
+    Set up fallbacks from OpenAI
+  </Card>
+  <Card title="Caching" icon="database" href="/essentials/caching">
+    Cache OpenAI responses
+  </Card>
+  <Card title="Function Calling" icon="function" href="/essentials/function-calling">
+    Advanced function calling guide
+  </Card>
+</CardGroup>

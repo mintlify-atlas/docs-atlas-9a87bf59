@@ -1,0 +1,649 @@
+---
+title: "MCP Gateway Access Control"
+description: "Configure granular team and user permissions for MCP servers and tools"
+---
+
+## Overview
+
+MCP Gateway's access control system allows you to define granular permissions for teams and users. Control who can access which MCP servers, which tools they can use, and what operations they can perform.
+
+## Access Control Model
+
+The gateway uses a hierarchical permission model:
+
+```
+Organization
+  ↓
+Teams (Engineering, Data Science, etc.)
+  ↓
+Users (alice@company.com, bob@company.com)
+  ↓
+Servers (github, filesystem, database)
+  ↓
+Tools (read_file, write_file, query_db)
+```
+
+Permissions can be defined at any level and are inherited downward.
+
+## Permission Types
+
+### Server-Level Permissions
+
+Control access to entire MCP servers:
+
+```json
+{
+  "accessControl": {
+    "servers": {
+      "github": {
+        "allowedTeams": ["engineering", "devops"],
+        "deniedUsers": ["contractor@company.com"]
+      },
+      "database": {
+        "allowedTeams": ["data-science"],
+        "allowedUsers": ["analyst@company.com"]
+      }
+    }
+  }
+}
+```
+
+### Tool-Level Permissions
+
+Restrict specific tools within servers:
+
+```json
+{
+  "accessControl": {
+    "tools": {
+      "filesystem.write_file": {
+        "allowedTeams": ["engineering"],
+        "deniedInProduction": true
+      },
+      "github.delete_repository": {
+        "allowedUsers": ["admin@company.com"],
+        "requiresApproval": true
+      },
+      "database.execute_query": {
+        "allowedTeams": ["data-science"],
+        "rateLimit": {
+          "requests": 100,
+          "window": "1h"
+        }
+      }
+    }
+  }
+}
+```
+
+### Operation-Level Permissions
+
+Define permissions for read/write operations:
+
+```json
+{
+  "accessControl": {
+    "operations": {
+      "read": {
+        "allowedTeams": ["*"]
+      },
+      "write": {
+        "allowedTeams": ["engineering", "data-science"],
+        "auditLog": true
+      },
+      "delete": {
+        "allowedUsers": ["admin@company.com"],
+        "requiresMFA": true
+      }
+    }
+  }
+}
+```
+
+## Configuring Access Control
+
+<Steps>
+  <Step title="Define teams and roles">
+    Create team definitions in your gateway configuration:
+    
+    ```json
+    {
+      "teams": {
+        "engineering": {
+          "name": "Engineering",
+          "members": [
+            "alice@company.com",
+            "bob@company.com"
+          ],
+          "defaultPermissions": ["mcp:read", "mcp:write"]
+        },
+        "data-science": {
+          "name": "Data Science",
+          "members": [
+            "carol@company.com"
+          ],
+          "defaultPermissions": ["mcp:read"]
+        },
+        "admins": {
+          "name": "Administrators",
+          "members": [
+            "admin@company.com"
+          ],
+          "defaultPermissions": ["*"]
+        }
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Set server access rules">
+    Define which teams can access which servers:
+    
+    ```json
+    {
+      "accessControl": {
+        "servers": {
+          "github": {
+            "allowedTeams": ["engineering", "admins"],
+            "description": "GitHub repository access"
+          },
+          "filesystem": {
+            "allowedTeams": ["engineering"],
+            "allowedPaths": ["/workspace", "/tmp"],
+            "deniedPaths": ["/etc", "/root"]
+          },
+          "database": {
+            "allowedTeams": ["data-science", "admins"],
+            "readOnly": true,
+            "exceptions": {
+              "admins": {
+                "readOnly": false
+              }
+            }
+          }
+        }
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Configure tool restrictions">
+    Set fine-grained tool permissions:
+    
+    ```json
+    {
+      "accessControl": {
+        "tools": {
+          "github.create_pull_request": {
+            "allowedTeams": ["engineering"],
+            "rateLimit": {
+              "requests": 50,
+              "window": "1h"
+            }
+          },
+          "filesystem.write_file": {
+            "allowedTeams": ["engineering"],
+            "validation": {
+              "maxFileSize": "10MB",
+              "allowedExtensions": [".js", ".ts", ".py", ".md"]
+            }
+          },
+          "database.execute_query": {
+            "allowedTeams": ["data-science"],
+            "constraints": {
+              "readOnly": true,
+              "timeout": "30s",
+              "maxRows": 10000
+            }
+          }
+        }
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Apply and test permissions">
+    Restart the gateway and verify permissions:
+    
+    ```bash
+    # Test as a specific user
+    curl -X POST http://localhost:8787/mcp/tools/call \
+      -H "Authorization: Bearer user-token" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "server": "github",
+        "tool": "list_repositories"
+      }'
+    ```
+    
+    <Tip>
+      Use the gateway console to preview effective permissions for users and teams.
+    </Tip>
+  </Step>
+</Steps>
+
+## Role-Based Access Control (RBAC)
+
+Define reusable roles with specific permissions:
+
+```json
+{
+  "roles": {
+    "developer": {
+      "permissions": [
+        "mcp:read",
+        "mcp:write",
+        "github:*",
+        "filesystem:read",
+        "filesystem:write"
+      ],
+      "restrictions": {
+        "filesystem": {
+          "allowedPaths": ["/workspace"]
+        }
+      }
+    },
+    "analyst": {
+      "permissions": [
+        "mcp:read",
+        "database:query",
+        "filesystem:read"
+      ],
+      "restrictions": {
+        "database": {
+          "readOnly": true
+        }
+      }
+    },
+    "admin": {
+      "permissions": ["*"],
+      "restrictions": {}
+    }
+  },
+  "users": {
+    "alice@company.com": {
+      "roles": ["developer"],
+      "team": "engineering"
+    },
+    "bob@company.com": {
+      "roles": ["analyst"],
+      "team": "data-science"
+    }
+  }
+}
+```
+
+## Dynamic Access Control
+
+Implement context-aware permissions based on request attributes:
+
+### Time-Based Access
+
+Restrict access to specific time windows:
+
+```json
+{
+  "accessControl": {
+    "timeRestrictions": {
+      "production-database": {
+        "allowedHours": "09:00-17:00",
+        "allowedDays": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+        "timezone": "America/New_York"
+      }
+    }
+  }
+}
+```
+
+### Resource-Based Access
+
+Control access based on resource attributes:
+
+```json
+{
+  "accessControl": {
+    "resourcePolicies": {
+      "filesystem": {
+        "rules": [
+          {
+            "condition": "path.startsWith('/workspace/team-${user.team}')",
+            "allow": true
+          },
+          {
+            "condition": "path.startsWith('/shared')",
+            "allow": true,
+            "operations": ["read"]
+          }
+        ],
+        "default": "deny"
+      }
+    }
+  }
+}
+```
+
+### IP-Based Access
+
+Restrict access by network location:
+
+```json
+{
+  "accessControl": {
+    "ipRestrictions": {
+      "allowedRanges": [
+        "10.0.0.0/8",
+        "192.168.1.0/24"
+      ],
+      "deniedRanges": [],
+      "exceptions": {
+        "admins": {
+          "allowAnyIP": true
+        }
+      }
+    }
+  }
+}
+```
+
+## Rate Limiting
+
+Protect servers from overuse with rate limiting:
+
+```json
+{
+  "accessControl": {
+    "rateLimits": {
+      "perUser": {
+        "requests": 1000,
+        "window": "1h"
+      },
+      "perTeam": {
+        "requests": 10000,
+        "window": "1h"
+      },
+      "perServer": {
+        "github": {
+          "requests": 5000,
+          "window": "1h",
+          "burst": 100
+        },
+        "database": {
+          "requests": 100,
+          "window": "1m"
+        }
+      },
+      "perTool": {
+        "filesystem.write_file": {
+          "requests": 100,
+          "window": "1m"
+        }
+      }
+    }
+  }
+}
+```
+
+<Note>
+Rate limits are enforced per user/team and tracked across all gateway instances using shared state.
+</Note>
+
+## Approval Workflows
+
+Require approval for sensitive operations:
+
+```json
+{
+  "accessControl": {
+    "approvalWorkflows": {
+      "database.execute_update": {
+        "requiresApproval": true,
+        "approvers": ["admin@company.com"],
+        "autoApprove": {
+          "conditions": [
+            "user.team == 'admins'"
+          ]
+        },
+        "timeout": "1h"
+      },
+      "github.delete_repository": {
+        "requiresApproval": true,
+        "approvers": ["admin@company.com", "manager@company.com"],
+        "requiredApprovals": 2
+      }
+    }
+  }
+}
+```
+
+## Audit Logging
+
+All access control decisions are automatically logged:
+
+```json
+{
+  "timestamp": "2026-03-03T10:30:00Z",
+  "type": "access_control",
+  "decision": "allow",
+  "user": "alice@company.com",
+  "team": "engineering",
+  "server": "github",
+  "tool": "create_pull_request",
+  "reason": "User has required permissions",
+  "context": {
+    "ip": "192.168.1.100",
+    "userAgent": "Claude-Desktop/1.0"
+  }
+}
+```
+
+Access audit logs via the gateway API:
+
+```bash
+curl http://localhost:8787/v1/audit/logs?user=alice@company.com&from=2026-03-01
+```
+
+## Managing Access at Scale
+
+### Sync with Identity Provider
+
+Automatically sync teams and users from your IdP:
+
+```json
+{
+  "accessControl": {
+    "identityProvider": {
+      "type": "okta",
+      "syncInterval": "1h",
+      "teamMapping": {
+        "okta-group-id-123": "engineering",
+        "okta-group-id-456": "data-science"
+      },
+      "roleMapping": {
+        "Developer": "developer",
+        "Analyst": "analyst",
+        "Admin": "admin"
+      }
+    }
+  }
+}
+```
+
+### Bulk Updates
+
+Update permissions for multiple users/teams:
+
+```bash
+curl -X POST http://localhost:8787/v1/access-control/bulk \
+  -H "Authorization: Bearer admin-token" \
+  -d '{
+    "teams": {
+      "engineering": {
+        "addServers": ["new-server"],
+        "removeServers": ["deprecated-server"]
+      }
+    }
+  }'
+```
+
+### Emergency Access Revocation
+
+Instantly revoke all access for a user or team:
+
+```bash
+curl -X POST http://localhost:8787/v1/access-control/revoke \
+  -H "Authorization: Bearer admin-token" \
+  -d '{
+    "user": "contractor@company.com",
+    "reason": "Contract ended",
+    "revokeTokens": true
+  }'
+```
+
+<Warning>
+Emergency revocation is immediate and affects all active sessions. Use with caution.
+</Warning>
+
+## Testing Permissions
+
+Test permissions before applying:
+
+```bash
+# Test access for a specific user
+curl http://localhost:8787/v1/access-control/test \
+  -H "Authorization: Bearer admin-token" \
+  -d '{
+    "user": "alice@company.com",
+    "server": "github",
+    "tool": "create_pull_request"
+  }'
+
+# Response
+{
+  "allowed": true,
+  "reason": "User is member of engineering team which has github access",
+  "effectivePermissions": [
+    "mcp:read",
+    "mcp:write",
+    "github:*"
+  ]
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Principle of least privilege" icon="shield">
+    Grant minimum required permissions:
+    - Start with restrictive defaults
+    - Add permissions as needed
+    - Regular permission audits
+    - Remove unused permissions
+  </Accordion>
+  
+  <Accordion title="Use team-based permissions" icon="users">
+    Manage permissions at the team level:
+    - Easier to maintain
+    - Consistent across users
+    - Scales better
+    - Clear ownership
+  </Accordion>
+  
+  <Accordion title="Implement approval workflows" icon="circle-check">
+    Require approval for sensitive operations:
+    - Data modifications
+    - Resource deletion
+    - Production access
+    - Cost-intensive operations
+  </Accordion>
+  
+  <Accordion title="Monitor and alert" icon="bell">
+    Set up monitoring for access patterns:
+    - Failed access attempts
+    - Unusual access patterns
+    - Permission changes
+    - Rate limit violations
+  </Accordion>
+  
+  <Accordion title="Regular access reviews" icon="calendar">
+    Periodically review access:
+    - Quarterly user reviews
+    - Remove inactive users
+    - Update team memberships
+    - Validate permissions
+  </Accordion>
+</AccordionGroup>
+
+## Complete Example
+
+Here's a comprehensive access control configuration:
+
+```json gateway-config.json
+{
+  "teams": {
+    "engineering": {
+      "name": "Engineering",
+      "members": ["alice@company.com", "bob@company.com"],
+      "defaultPermissions": ["mcp:read", "mcp:write"]
+    },
+    "data-science": {
+      "name": "Data Science",
+      "members": ["carol@company.com"],
+      "defaultPermissions": ["mcp:read"]
+    }
+  },
+  "accessControl": {
+    "servers": {
+      "github": {
+        "allowedTeams": ["engineering"]
+      },
+      "database": {
+        "allowedTeams": ["data-science"],
+        "readOnly": true
+      }
+    },
+    "tools": {
+      "github.delete_repository": {
+        "allowedUsers": ["admin@company.com"],
+        "requiresApproval": true
+      },
+      "filesystem.write_file": {
+        "allowedTeams": ["engineering"],
+        "validation": {
+          "maxFileSize": "10MB"
+        }
+      }
+    },
+    "rateLimits": {
+      "perUser": {
+        "requests": 1000,
+        "window": "1h"
+      }
+    },
+    "audit": {
+      "enabled": true,
+      "logAll": true,
+      "retention": "90d"
+    }
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/mcp/authentication">
+    Learn about authentication methods
+  </Card>
+  
+  <Card title="Monitoring" icon="chart-line" href="/features/observability">
+    Set up access monitoring and alerts
+  </Card>
+  
+  <Card title="Deployment" icon="server" href="/deployment/overview">
+    Deploy to production
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Explore the complete API
+  </Card>
+</CardGroup>

@@ -1,0 +1,726 @@
+---
+title: "Realtime APIs (WebSocket)"
+description: "Low-latency bidirectional communication with LLMs over WebSocket"
+---
+
+## Overview
+
+Realtime APIs enable bidirectional, low-latency communication with LLMs over WebSocket connections. This powers use cases like:
+
+- Voice assistants with real-time transcription and responses
+- Interactive chat with streaming function calls
+- Live translation and interpretation
+- Real-time audio processing
+
+The Gateway provides a WebSocket server that proxies connections to provider realtime endpoints (currently OpenAI's Realtime API).
+
+<Info>
+Realtime APIs are different from HTTP streaming. They use WebSocket for full-duplex communication, allowing you to send and receive messages simultaneously.
+</Info>
+
+## How It Works
+
+1. Client establishes WebSocket connection to Gateway
+2. Gateway creates outgoing WebSocket connection to provider
+3. Messages are proxied bidirectionally with observability
+4. Gateway tracks events, tokens, and costs in real-time
+5. Connection closes when either side disconnects
+
+```
+Client <--> Gateway <--> Provider (OpenAI)
+         (WebSocket)    (WebSocket)
+```
+
+## Supported Providers
+
+Currently supported:
+
+- **OpenAI Realtime API** (gpt-4o-realtime-preview, gpt-4o-mini-realtime-preview)
+
+Coming soon:
+- Anthropic streaming
+- Google Gemini live
+- Custom realtime endpoints
+
+## Getting Started
+
+### WebSocket Connection
+
+Connect to the Gateway's realtime endpoint:
+
+```
+wss://api.portkey.ai/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01
+```
+
+### Authentication
+
+Include Portkey headers in the WebSocket upgrade request:
+
+```javascript
+const ws = new WebSocket('wss://api.portkey.ai/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01', {
+  headers: {
+    'x-portkey-api-key': 'PORTKEY_API_KEY',
+    'x-portkey-provider': 'openai',
+    'Authorization': 'Bearer OPENAI_API_KEY'
+  }
+});
+```
+
+<Note>
+You can also use Virtual Keys instead of passing the OpenAI API key directly:
+```javascript
+'x-portkey-virtual-key': 'openai-virtual-key-xyz'
+```
+</Note>
+
+## Usage Examples
+
+<CodeGroup>
+
+```javascript JavaScript (Browser)
+const ws = new WebSocket(
+  'wss://api.portkey.ai/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01',
+  [],
+  {
+    headers: {
+      'x-portkey-api-key': 'PORTKEY_API_KEY',
+      'x-portkey-provider': 'openai',
+      'Authorization': 'Bearer OPENAI_API_KEY'
+    }
+  }
+);
+
+// Connection opened
+ws.addEventListener('open', (event) => {
+  console.log('Connected to Portkey Gateway');
+  
+  // Send a message
+  ws.send(JSON.stringify({
+    type: 'conversation.item.create',
+    item: {
+      type: 'message',
+      role: 'user',
+      content: [{
+        type: 'input_text',
+        text: 'Hello, how are you?'
+      }]
+    }
+  }));
+  
+  // Request response
+  ws.send(JSON.stringify({
+    type: 'response.create'
+  }));
+});
+
+// Listen for messages
+ws.addEventListener('message', (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Received:', data);
+  
+  if (data.type === 'response.text.delta') {
+    process.stdout.write(data.delta);
+  }
+  
+  if (data.type === 'response.done') {
+    console.log('\nResponse complete');
+  }
+});
+
+// Handle errors
+ws.addEventListener('error', (error) => {
+  console.error('WebSocket error:', error);
+});
+
+// Handle close
+ws.addEventListener('close', (event) => {
+  console.log('Disconnected:', event.code, event.reason);
+});
+```
+
+```python Python
+import asyncio
+import websockets
+import json
+
+async def realtime_chat():
+    uri = "wss://api.portkey.ai/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
+    
+    headers = {
+        'x-portkey-api-key': 'PORTKEY_API_KEY',
+        'x-portkey-provider': 'openai',
+        'Authorization': 'Bearer OPENAI_API_KEY'
+    }
+    
+    async with websockets.connect(uri, extra_headers=headers) as ws:
+        print("Connected to Portkey Gateway")
+        
+        # Send a message
+        await ws.send(json.dumps({
+            'type': 'conversation.item.create',
+            'item': {
+                'type': 'message',
+                'role': 'user',
+                'content': [{
+                    'type': 'input_text',
+                    'text': 'Hello, how are you?'
+                }]
+            }
+        }))
+        
+        # Request response
+        await ws.send(json.dumps({'type': 'response.create'}))
+        
+        # Listen for messages
+        async for message in ws:
+            data = json.loads(message)
+            print(f"Received: {data['type']}")
+            
+            if data['type'] == 'response.text.delta':
+                print(data['delta'], end='', flush=True)
+            
+            if data['type'] == 'response.done':
+                print("\nResponse complete")
+                break
+
+asyncio.run(realtime_chat())
+```
+
+```typescript TypeScript (Node.js)
+import WebSocket from 'ws';
+
+const ws = new WebSocket(
+  'wss://api.portkey.ai/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01',
+  {
+    headers: {
+      'x-portkey-api-key': 'PORTKEY_API_KEY',
+      'x-portkey-provider': 'openai',
+      'Authorization': 'Bearer OPENAI_API_KEY'
+    }
+  }
+);
+
+ws.on('open', () => {
+  console.log('Connected to Portkey Gateway');
+  
+  // Send a message
+  ws.send(JSON.stringify({
+    type: 'conversation.item.create',
+    item: {
+      type: 'message',
+      role: 'user',
+      content: [{
+        type: 'input_text',
+        text: 'Hello, how are you?'
+      }]
+    }
+  }));
+  
+  // Request response
+  ws.send(JSON.stringify({ type: 'response.create' }));
+});
+
+ws.on('message', (data: string) => {
+  const message = JSON.parse(data);
+  console.log('Received:', message.type);
+  
+  if (message.type === 'response.text.delta') {
+    process.stdout.write(message.delta);
+  }
+  
+  if (message.type === 'response.done') {
+    console.log('\nResponse complete');
+  }
+});
+
+ws.on('error', (error) => {
+  console.error('WebSocket error:', error);
+});
+
+ws.on('close', (code, reason) => {
+  console.log(`Disconnected: ${code} ${reason}`);
+});
+```
+
+</CodeGroup>
+
+## OpenAI Realtime API Events
+
+### Client Events (Send to Gateway)
+
+#### Create Conversation Item
+
+```json
+{
+  "type": "conversation.item.create",
+  "item": {
+    "type": "message",
+    "role": "user",
+    "content": [{
+      "type": "input_text",
+      "text": "Hello!"
+    }]
+  }
+}
+```
+
+#### Request Response
+
+```json
+{
+  "type": "response.create",
+  "response": {
+    "modalities": ["text", "audio"],
+    "instructions": "You are a helpful assistant."
+  }
+}
+```
+
+#### Update Session
+
+```json
+{
+  "type": "session.update",
+  "session": {
+    "modalities": ["text", "audio"],
+    "voice": "alloy",
+    "temperature": 0.8
+  }
+}
+```
+
+### Server Events (Receive from Gateway)
+
+#### Session Created
+
+```json
+{
+  "type": "session.created",
+  "session": {
+    "id": "sess_123",
+    "model": "gpt-4o-realtime-preview-2024-10-01",
+    "modalities": ["text", "audio"]
+  }
+}
+```
+
+#### Response Text Delta
+
+```json
+{
+  "type": "response.text.delta",
+  "delta": "Hello",
+  "response_id": "resp_123",
+  "item_id": "item_456"
+}
+```
+
+#### Response Audio Delta
+
+```json
+{
+  "type": "response.audio.delta",
+  "delta": "base64_audio_chunk",
+  "response_id": "resp_123",
+  "item_id": "item_456"
+}
+```
+
+#### Response Done
+
+```json
+{
+  "type": "response.done",
+  "response": {
+    "id": "resp_123",
+    "status": "completed",
+    "output": [...]
+  }
+}
+```
+
+## Audio Streaming
+
+### Send Audio Input
+
+```javascript
+// Create audio conversation item
+ws.send(JSON.stringify({
+  type: 'conversation.item.create',
+  item: {
+    type: 'message',
+    role: 'user',
+    content: [{
+      type: 'input_audio',
+      audio: base64AudioData  // Base64 encoded PCM16 audio
+    }]
+  }
+}));
+
+// Request response
+ws.send(JSON.stringify({
+  type: 'response.create',
+  response: {
+    modalities: ['text', 'audio']
+  }
+}));
+```
+
+### Receive Audio Output
+
+```javascript
+ws.addEventListener('message', (event) => {
+  const data = JSON.parse(event.data);
+  
+  if (data.type === 'response.audio.delta') {
+    // data.delta contains base64 encoded PCM16 audio
+    const audioChunk = Buffer.from(data.delta, 'base64');
+    playAudio(audioChunk);
+  }
+});
+```
+
+## Implementation Details
+
+### Gateway WebSocket Handler
+
+From `src/handlers/realtimeHandler.ts`:
+
+```typescript
+export async function realTimeHandler(c: Context): Promise<Response> {
+  try {
+    const requestHeaders = Object.fromEntries(c.req.raw.headers);
+    const providerOptions = constructConfigFromRequestHeaders(requestHeaders);
+    const provider = providerOptions.provider ?? '';
+    const apiConfig: ProviderAPIConfig = Providers[provider].api;
+    
+    // Get provider URL and options
+    const url = getURLForOutgoingConnection(apiConfig, providerOptions, c.req.url, c);
+    const options = await getOptionsForOutgoingConnection(apiConfig, providerOptions, url, c);
+
+    const sessionOptions = {
+      id: crypto.randomUUID(),
+      providerOptions: {
+        ...providerOptions,
+        requestURL: url,
+        rubeusURL: 'realtime',
+      },
+      requestHeaders,
+      requestParams: {},
+    };
+
+    // Create WebSocket pair
+    const webSocketPair = new WebSocketPair();
+    const client = webSocketPair[0];
+    const server = webSocketPair[1];
+
+    server.accept();
+
+    // Connect to provider
+    let outgoingWebSocket: WebSocket = await getOutgoingWebSocket(url, options);
+    const eventParser = new RealtimeLlmEventParser();
+    addListeners(outgoingWebSocket, eventParser, server, c, sessionOptions);
+
+    return new Response(null, {
+      status: 101,
+      webSocket: client,
+    });
+  } catch (err: any) {
+    console.error('realtimeHandler error: ', err.message);
+    return new Response(
+      JSON.stringify({
+        status: 'failure',
+        message: 'Something went wrong',
+      }),
+      { status: 500 }
+    );
+  }
+}
+```
+
+### Event Parsing and Observability
+
+The Gateway parses WebSocket events to track:
+- Token usage (input/output)
+- Cost calculation
+- Response latency
+- Error rates
+- Custom metadata
+
+```typescript
+class RealtimeLlmEventParser {
+  parseEvent(event: any) {
+    // Extract tokens, costs, and metadata
+    // Track in observability system
+  }
+}
+```
+
+## Advanced Patterns
+
+### Function Calling
+
+```javascript
+// Define functions
+ws.send(JSON.stringify({
+  type: 'session.update',
+  session: {
+    tools: [
+      {
+        type: 'function',
+        name: 'get_weather',
+        description: 'Get weather for a location',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string' }
+          },
+          required: ['location']
+        }
+      }
+    ]
+  }
+}));
+
+// Handle function calls
+ws.addEventListener('message', (event) => {
+  const data = JSON.parse(event.data);
+  
+  if (data.type === 'response.function_call_arguments.done') {
+    const functionName = data.name;
+    const args = JSON.parse(data.arguments);
+    
+    // Execute function
+    const result = executeFunction(functionName, args);
+    
+    // Send result back
+    ws.send(JSON.stringify({
+      type: 'conversation.item.create',
+      item: {
+        type: 'function_call_output',
+        call_id: data.call_id,
+        output: JSON.stringify(result)
+      }
+    }));
+  }
+});
+```
+
+### Multi-Turn Conversation
+
+```javascript
+const conversation = [];
+
+function addMessage(role, content) {
+  conversation.push({ role, content });
+  
+  ws.send(JSON.stringify({
+    type: 'conversation.item.create',
+    item: {
+      type: 'message',
+      role: role,
+      content: [{ type: 'input_text', text: content }]
+    }
+  }));
+}
+
+function requestResponse() {
+  ws.send(JSON.stringify({
+    type: 'response.create',
+    response: {
+      conversation: conversation
+    }
+  }));
+}
+
+// Usage
+addMessage('user', 'What is the capital of France?');
+requestResponse();
+
+// Later
+addMessage('user', 'What is its population?');
+requestResponse();
+```
+
+### Voice Assistant
+
+```javascript
+// Configure for voice
+ws.send(JSON.stringify({
+  type: 'session.update',
+  session: {
+    modalities: ['text', 'audio'],
+    voice: 'alloy',
+    input_audio_format: 'pcm16',
+    output_audio_format: 'pcm16',
+    turn_detection: {
+      type: 'server_vad',
+      threshold: 0.5,
+      prefix_padding_ms: 300,
+      silence_duration_ms: 500
+    }
+  }
+}));
+
+// Stream audio from microphone
+microphone.on('data', (audioChunk) => {
+  ws.send(JSON.stringify({
+    type: 'input_audio_buffer.append',
+    audio: audioChunk.toString('base64')
+  }));
+});
+
+// Play audio responses
+ws.addEventListener('message', (event) => {
+  const data = JSON.parse(event.data);
+  
+  if (data.type === 'response.audio.delta') {
+    const audioChunk = Buffer.from(data.delta, 'base64');
+    speaker.write(audioChunk);
+  }
+});
+```
+
+## Configuration Options
+
+### Session Configuration
+
+```json
+{
+  "type": "session.update",
+  "session": {
+    "modalities": ["text", "audio"],
+    "voice": "alloy",
+    "instructions": "You are a helpful assistant.",
+    "input_audio_format": "pcm16",
+    "output_audio_format": "pcm16",
+    "input_audio_transcription": {
+      "model": "whisper-1"
+    },
+    "turn_detection": {
+      "type": "server_vad",
+      "threshold": 0.5
+    },
+    "temperature": 0.8,
+    "max_response_output_tokens": 1000
+  }
+}
+```
+
+### Voice Options
+
+- `alloy`
+- `echo`
+- `fable`
+- `onyx`
+- `nova`
+- `shimmer`
+
+### Audio Formats
+
+- `pcm16` - 16-bit PCM audio at 24kHz
+- `g711_ulaw` - G.711 μ-law audio at 8kHz
+- `g711_alaw` - G.711 A-law audio at 8kHz
+
+## Error Handling
+
+```javascript
+ws.addEventListener('message', (event) => {
+  const data = JSON.parse(event.data);
+  
+  if (data.type === 'error') {
+    console.error('Realtime API error:', data.error);
+    
+    switch (data.error.code) {
+      case 'rate_limit_exceeded':
+        // Handle rate limit
+        break;
+      case 'invalid_request':
+        // Handle invalid request
+        break;
+      default:
+        // Handle other errors
+    }
+  }
+});
+
+ws.addEventListener('close', (event) => {
+  if (event.code !== 1000) {
+    console.error('Abnormal close:', event.code, event.reason);
+    // Implement reconnection logic
+  }
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Implement Reconnection Logic">
+WebSocket connections can drop. Implement exponential backoff reconnection:
+```javascript
+function connectWithRetry(retries = 5, delay = 1000) {
+  const ws = new WebSocket(url, options);
+  
+  ws.onerror = () => {
+    if (retries > 0) {
+      setTimeout(() => connectWithRetry(retries - 1, delay * 2), delay);
+    }
+  };
+  
+  return ws;
+}
+```
+</Accordion>
+
+<Accordion title="Handle Audio Buffering">
+Buffer audio chunks to prevent choppy playback and handle network jitter appropriately.
+</Accordion>
+
+<Accordion title="Monitor Connection Health">
+Implement ping/pong or heartbeat to detect stale connections:
+```javascript
+setInterval(() => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'ping' }));
+  }
+}, 30000);
+```
+</Accordion>
+
+<Accordion title="Cleanup Resources">
+Always cleanup when done:
+```javascript
+ws.close(1000, 'Normal closure');
+microphone.stop();
+speaker.close();
+```
+</Accordion>
+
+<Accordion title="Use Virtual Keys">
+Use Portkey Virtual Keys instead of hardcoding API keys for better security and management.
+</Accordion>
+
+</AccordionGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+
+<Card title="Streaming" icon="water" href="/features/streaming">
+  HTTP streaming responses
+</Card>
+
+<Card title="Multi-Modal" icon="image" href="/features/multi-modal">
+  Audio and vision capabilities
+</Card>
+
+<Card title="Timeouts" icon="clock" href="/features/timeouts">
+  Configure connection timeouts
+</Card>
+
+<Card title="Observability" icon="chart-line" href="/concepts/observability">
+  Monitor realtime API usage
+</Card>
+
+</CardGroup>

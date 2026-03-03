@@ -1,0 +1,312 @@
+---
+title: 'Generate Images'
+description: 'POST /v1/images/generations - Generate images from text prompts'
+---
+
+## Endpoint
+
+```
+POST /v1/images/generations
+```
+
+Creates an image based on a text prompt.
+
+## Request
+
+### Headers
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`
+</ParamField>
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The AI provider to use (e.g., `openai`, `stability-ai`)
+</ParamField>
+
+<ParamField header="x-portkey-api-key" type="string" required>
+  Your API key for the specified provider
+</ParamField>
+
+### Body Parameters
+
+<ParamField body="prompt" type="string" required>
+  A text description of the desired image(s). Maximum length varies by model.
+</ParamField>
+
+<ParamField body="model" type="string">
+  The model to use for image generation (e.g., `dall-e-3`, `dall-e-2`)
+</ParamField>
+
+<ParamField body="n" type="integer" default={1}>
+  Number of images to generate (1-10 for DALL-E 2, only 1 for DALL-E 3)
+</ParamField>
+
+<ParamField body="size" type="string">
+  Size of the generated images
+  - DALL-E 3: `1024x1024`, `1024x1792`, `1792x1024`
+  - DALL-E 2: `256x256`, `512x512`, `1024x1024`
+</ParamField>
+
+<ParamField body="quality" type="string" default="standard">
+  Quality of the image: `standard` or `hd` (DALL-E 3 only)
+</ParamField>
+
+<ParamField body="style" type="string" default="vivid">
+  Style of the generated images: `vivid` or `natural` (DALL-E 3 only)
+</ParamField>
+
+<ParamField body="response_format" type="string" default="url">
+  Format of the response: `url` or `b64_json`
+</ParamField>
+
+<ParamField body="user" type="string">
+  Unique identifier for the end-user
+</ParamField>
+
+## Response
+
+<ResponseField name="created" type="integer">
+  Unix timestamp of when the image was created
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of generated images
+  
+  <ResponseField name="url" type="string">
+    URL of the generated image (when `response_format` is `url`)
+  </ResponseField>
+  
+  <ResponseField name="b64_json" type="string">
+    Base64-encoded image data (when `response_format` is `b64_json`)
+  </ResponseField>
+  
+  <ResponseField name="revised_prompt" type="string">
+    The prompt that was used to generate the image (DALL-E 3 may revise prompts)
+  </ResponseField>
+</ResponseField>
+
+## Examples
+
+### Basic Image Generation
+
+```bash
+curl http://localhost:8787/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "prompt": "A cute baby sea otter wearing a beret",
+    "model": "dall-e-3",
+    "n": 1,
+    "size": "1024x1024"
+  }'
+```
+
+### Response
+
+```json
+{
+  "created": 1677652288,
+  "data": [
+    {
+      "url": "https://...",
+      "revised_prompt": "A charming young sea otter, its fur wet and sleek, wearing a classic French beret tilted at a jaunty angle..."
+    }
+  ]
+}
+```
+
+### Python SDK
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.images.generate(
+    prompt="A cute baby sea otter wearing a beret",
+    model="dall-e-3",
+    n=1,
+    size="1024x1024",
+    quality="hd"
+)
+
+image_url = response.data[0].url
+print(f"Image URL: {image_url}")
+print(f"Revised prompt: {response.data[0].revised_prompt}")
+```
+
+### JavaScript SDK
+
+```javascript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+  provider: 'openai',
+  Authorization: 'sk-...'
+});
+
+const response = await client.images.generate({
+  prompt: 'A cute baby sea otter wearing a beret',
+  model: 'dall-e-3',
+  n: 1,
+  size: '1024x1024',
+  quality: 'hd'
+});
+
+const imageUrl = response.data[0].url;
+console.log(`Image URL: ${imageUrl}`);
+console.log(`Revised prompt: ${response.data[0].revised_prompt}`);
+```
+
+### Generate Multiple Images (DALL-E 2)
+
+```bash
+curl http://localhost:8787/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "prompt": "A futuristic cityscape at sunset",
+    "model": "dall-e-2",
+    "n": 4,
+    "size": "512x512"
+  }'
+```
+
+### Download and Save Image
+
+```python
+from portkey_ai import Portkey
+import requests
+from pathlib import Path
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.images.generate(
+    prompt="A serene mountain landscape",
+    model="dall-e-3"
+)
+
+image_url = response.data[0].url
+
+# Download and save
+image_data = requests.get(image_url).content
+Path("generated_image.png").write_bytes(image_data)
+print("Image saved as generated_image.png")
+```
+
+### Base64 Response Format
+
+```python
+from portkey_ai import Portkey
+import base64
+from pathlib import Path
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.images.generate(
+    prompt="A magical forest with glowing mushrooms",
+    model="dall-e-3",
+    response_format="b64_json"
+)
+
+# Decode and save base64 image
+image_data = base64.b64decode(response.data[0].b64_json)
+Path("image.png").write_bytes(image_data)
+```
+
+### HD Quality with Natural Style
+
+```bash
+curl http://localhost:8787/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -d '{
+    "prompt": "A professional photograph of a coffee cup on a wooden table",
+    "model": "dall-e-3",
+    "size": "1024x1024",
+    "quality": "hd",
+    "style": "natural"
+  }'
+```
+
+### Landscape Orientation
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.images.generate(
+    prompt="A panoramic view of the Grand Canyon at sunrise",
+    model="dall-e-3",
+    size="1792x1024",  # Landscape format
+    quality="hd"
+)
+
+print(response.data[0].url)
+```
+
+### Portrait Orientation
+
+```python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.images.generate(
+    prompt="A portrait of a wise old wizard",
+    model="dall-e-3",
+    size="1024x1792",  # Portrait format
+    quality="hd"
+)
+
+print(response.data[0].url)
+```
+
+## Prompt Engineering Tips
+
+1. **Be Specific**: Include details about subject, style, lighting, and composition
+2. **Mention Style**: Specify artistic styles (e.g., "oil painting", "3D render", "photograph")
+3. **Describe Details**: Include colors, textures, and atmosphere
+4. **Set the Scene**: Describe the environment and context
+
+### Example Prompts
+
+```python
+# Detailed and specific
+"A photorealistic close-up of a vintage typewriter on an oak desk, soft natural lighting from a window, shallow depth of field, golden hour ambiance"
+
+# Artistic style
+"An impressionist painting of a Parisian café in autumn, warm colors, loose brushstrokes, people sitting at outdoor tables"
+
+# 3D render
+"A futuristic sports car, sleek metallic blue finish, studio lighting, 3D render, high detail, reflective surfaces"
+```
+
+## Rate Limits
+
+Rate limits vary by provider and tier:
+- **DALL-E 3**: Typically 5-50 images per minute depending on tier
+- **DALL-E 2**: Higher throughput, up to 50 images per minute
+
+## Content Policy
+
+All generated images must comply with provider content policies. Requests that violate policies will be rejected.

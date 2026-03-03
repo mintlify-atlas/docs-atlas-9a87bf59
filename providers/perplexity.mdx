@@ -1,0 +1,370 @@
+---
+title: 'Perplexity'
+description: 'Access Perplexity Sonar models with built-in web search and real-time information'
+---
+
+## Overview
+
+Perplexity provides AI models with built-in web search capabilities, delivering up-to-date information and citations. Access Perplexity's Sonar models through Portkey for search-augmented AI responses.
+
+**Base URL:** `https://api.perplexity.ai`
+
+## Supported Features
+
+- ✅ Chat Completions
+- ✅ Streaming
+- ✅ Web Search Integration
+- ✅ Citations
+- ✅ Real-time Information
+- ❌ Embeddings
+- ❌ Function Calling
+- ❌ Vision
+- ❌ Image Generation
+
+## Quick Start
+
+### Chat Completions with Search
+
+<CodeGroup>
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="perplexity-ai",
+    Authorization="***"  # Your Perplexity API key
+)
+
+response = client.chat.completions.create(
+    model="sonar-pro",
+    messages=[
+        {"role": "user", "content": "What are the latest developments in AI in 2024?"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "perplexity-ai",
+    Authorization: "***"  // Your Perplexity API key
+});
+
+const response = await client.chat.completions.create({
+    model: "sonar-pro",
+    messages: [
+        {role: "user", content: "What are the latest developments in AI in 2024?"}
+    ]
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: perplexity-ai" \
+  -H "Authorization: Bearer ***" \
+  -d '{
+    "model": "sonar-pro",
+    "messages": [
+      {"role": "user", "content": "What are the latest developments in AI in 2024?"}
+    ]
+  }'
+```
+</CodeGroup>
+
+### Streaming
+
+```python
+stream = client.chat.completions.create(
+    model="sonar-pro",
+    messages=[{"role": "user", "content": "Latest news about SpaceX"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+## Available Models
+
+### Sonar Models (Online)
+
+These models have access to the web and provide citations:
+
+| Model | Context | Description | Best For |
+|-------|---------|-------------|----------|
+| `sonar-pro` | 127K | Most capable with search | Complex research, analysis |
+| `sonar` | 127K | Fast with search | Quick lookups, Q&A |
+
+### Chat Models (Offline)
+
+Standard chat models without web access:
+
+| Model | Context | Description | Best For |
+|-------|---------|-------------|----------|
+| `llama-3.1-sonar-huge-128k-online` | 127K | Largest online model | Complex queries |
+| `llama-3.1-sonar-large-128k-online` | 127K | Balanced online | General purpose |
+| `llama-3.1-sonar-small-128k-online` | 127K | Fast online | Quick responses |
+
+<Note>
+  **Perplexity excels at:**
+  - **Real-time information** - Access current web data
+  - **Fact-checking** - Verify information with citations
+  - **Research** - Comprehensive web search
+  - **Current events** - Up-to-date news and developments
+  - **Citation tracking** - Source attribution
+</Note>
+
+## Configuration Options
+
+```python
+client = Portkey(
+    provider="perplexity-ai",
+    Authorization="***"  # Bearer token
+)
+```
+
+| Header | Description | Required |
+|--------|-------------|----------|
+| `Authorization` | Perplexity API key | Yes |
+
+## Advanced Features
+
+### System Messages
+
+```python
+response = client.chat.completions.create(
+    model="sonar-pro",
+    messages=[
+        {
+            "role": "system",
+            "content": "You are a helpful research assistant. Always cite your sources."
+        },
+        {
+            "role": "user",
+            "content": "What are the benefits of renewable energy?"
+        }
+    ]
+)
+```
+
+### Temperature Control
+
+```python
+response = client.chat.completions.create(
+    model="sonar-pro",
+    messages=[{"role": "user", "content": "Summarize recent AI breakthroughs"}],
+    temperature=0.2,  # Lower for factual responses
+    max_tokens=1000
+)
+```
+
+### Multi-turn Conversations
+
+```python
+messages = [
+    {"role": "user", "content": "What is quantum computing?"},
+]
+
+response = client.chat.completions.create(
+    model="sonar-pro",
+    messages=messages
+)
+
+# Add assistant response
+messages.append({
+    "role": "assistant",
+    "content": response.choices[0].message.content
+})
+
+# Continue conversation
+messages.append({
+    "role": "user",
+    "content": "What are its practical applications?"
+})
+
+response = client.chat.completions.create(
+    model="sonar-pro",
+    messages=messages
+)
+```
+
+## Use Cases
+
+### Research & Analysis
+
+```python
+response = client.chat.completions.create(
+    model="sonar-pro",
+    messages=[{
+        "role": "user",
+        "content": "Compare the environmental impact of electric vs hydrogen vehicles with recent data"
+    }]
+)
+```
+
+### Current Events
+
+```python
+response = client.chat.completions.create(
+    model="sonar",
+    messages=[{
+        "role": "user",
+        "content": "What happened in the tech industry this week?"
+    }]
+)
+```
+
+### Fact Verification
+
+```python
+response = client.chat.completions.create(
+    model="sonar-pro",
+    messages=[{
+        "role": "user",
+        "content": "Verify: Is the global temperature rising? Provide recent data."
+    }]
+)
+```
+
+## Fallback Configuration
+
+Fallback to GPT-4 for non-search queries:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {
+            "provider": "perplexity-ai",
+            "api_key": "***",
+            "override_params": {"model": "sonar-pro"}
+        },
+        {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "override_params": {"model": "gpt-4o"}
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Conditional Routing
+
+Route to Perplexity for search queries, GPT-4 for others:
+
+```python
+config = {
+    "strategy": {"mode": "conditional"},
+    "conditions": [
+        {
+            "query": {"metadata.needs_search": True},
+            "then": "perplexity_target"
+        },
+        {
+            "query": {"metadata.needs_search": False},
+            "then": "openai_target"
+        }
+    ],
+    "targets": {
+        "perplexity_target": {
+            "provider": "perplexity-ai",
+            "api_key": "***",
+            "override_params": {"model": "sonar-pro"}
+        },
+        "openai_target": {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "override_params": {"model": "gpt-4o"}
+        }
+    }
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Error Handling
+
+```python
+from portkey_ai.exceptions import (
+    RateLimitError,
+    APIError,
+    AuthenticationError
+)
+
+try:
+    response = client.chat.completions.create(
+        model="sonar-pro",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+except RateLimitError as e:
+    print(f"Rate limit: {e}")
+except AuthenticationError as e:
+    print(f"Invalid API key: {e}")
+except APIError as e:
+    print(f"API error: {e}")
+```
+
+## Best Practices
+
+1. **Use for current information** - Leverage web search capabilities
+2. **Lower temperature** - For factual accuracy (0.0-0.3)
+3. **Clear queries** - Specific questions get better results
+4. **Request citations** - Ask model to cite sources
+5. **Use sonar-pro** - For important research
+6. **Use sonar** - For quick lookups
+7. **Verify information** - Always validate critical facts
+8. **Implement caching** - Cache responses to reduce costs
+
+## Limitations
+
+- No function calling support (yet)
+- No vision capabilities
+- No embeddings
+- Search results depend on web availability
+- May have slightly higher latency due to search
+
+## When to Use Perplexity
+
+**Use Perplexity when:**
+- You need current, real-time information
+- Research requires web search
+- Citations and sources are important
+- Fact-checking is critical
+- Questions involve recent events
+
+**Use other providers when:**
+- Information is static or historical
+- You need vision or function calling
+- Lower latency is critical
+- You're doing creative writing
+
+## Pricing
+
+<Card title="Perplexity Pricing" icon="dollar-sign" href="https://portkey.ai/models?provider=perplexity">
+  View detailed pricing for Perplexity models
+</Card>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Conditional Routing" icon="code-branch" href="/essentials/conditional-routing">
+    Route based on search needs
+  </Card>
+  <Card title="Fallbacks" icon="arrows-rotate" href="/essentials/fallbacks">
+    Fallback configurations
+  </Card>
+  <Card title="Caching" icon="database" href="/essentials/caching">
+    Cache search results
+  </Card>
+  <Card title="Google Gemini" icon="google" href="/providers/google-gemini">
+    Alternative with search
+  </Card>
+</CardGroup>

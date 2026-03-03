@@ -1,0 +1,480 @@
+---
+title: 'Anthropic'
+description: 'Integrate Claude models from Anthropic including Claude 3.5 Sonnet, Claude 3 Opus, and Claude 3 Haiku'
+---
+
+## Overview
+
+Anthropic develops Claude, a family of highly capable AI assistants known for their strong performance, safety features, and long context windows. Portkey provides full support for all Claude models and features.
+
+**Base URL:** `https://api.anthropic.com/v1`
+
+## Supported Features
+
+- ✅ Messages API (Chat Completions)
+- ✅ Streaming
+- ✅ Tool Use (Function Calling)
+- ✅ Vision (Image inputs)
+- ✅ System Prompts
+- ✅ Token Counting
+- ✅ Batch API
+- ✅ Prompt Caching
+- ❌ Embeddings (not available)
+- ❌ Fine-tuning (not available)
+
+## Quick Start
+
+### Chat Completions
+
+<CodeGroup>
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="anthropic",
+    Authorization="sk-ant-***"  # Your Anthropic API key
+)
+
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[
+        {"role": "user", "content": "Explain quantum computing in simple terms"}
+    ],
+    max_tokens=1024
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "anthropic",
+    Authorization: "sk-ant-***"  // Your Anthropic API key
+});
+
+const response = await client.chat.completions.create({
+    model: "claude-3-5-sonnet-20241022",
+    messages: [
+        {role: "user", content: "Explain quantum computing in simple terms"}
+    ],
+    max_tokens: 1024
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: anthropic" \
+  -H "Authorization: Bearer sk-ant-***" \
+  -d '{
+    "model": "claude-3-5-sonnet-20241022",
+    "messages": [
+      {"role": "user", "content": "Explain quantum computing in simple terms"}
+    ],
+    "max_tokens": 1024
+  }'
+```
+</CodeGroup>
+
+### Streaming Responses
+
+<CodeGroup>
+```python Python
+stream = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[{"role": "user", "content": "Write a haiku about programming"}],
+    max_tokens=100,
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+```javascript JavaScript
+const stream = await client.chat.completions.create({
+    model: "claude-3-5-sonnet-20241022",
+    messages: [{role: "user", content: "Write a haiku about programming"}],
+    max_tokens: 100,
+    stream: true
+});
+
+for await (const chunk of stream) {
+    if (chunk.choices[0]?.delta?.content) {
+        process.stdout.write(chunk.choices[0].delta.content);
+    }
+}
+```
+</CodeGroup>
+
+## Available Models
+
+| Model | Context Window | Description | Best For |
+|-------|----------------|-------------|----------|
+| `claude-3-5-sonnet-20241022` | 200K tokens | Latest, most capable model | Complex tasks, coding, analysis |
+| `claude-3-5-haiku-20241022` | 200K tokens | Fastest Claude 3.5 model | Quick responses, high throughput |
+| `claude-3-opus-20240229` | 200K tokens | Most powerful Claude 3 | Highly complex tasks |
+| `claude-3-sonnet-20240229` | 200K tokens | Balanced performance | General purpose |
+| `claude-3-haiku-20240307` | 200K tokens | Fastest, most compact | Simple tasks, cost-effective |
+
+<Note>
+  Claude models excel at:
+  - Long document analysis (200K context)
+  - Coding and technical tasks
+  - Thoughtful, nuanced responses
+  - Following complex instructions
+  - Refusing unsafe requests
+</Note>
+
+## Configuration Options
+
+### Headers
+
+```python
+client = Portkey(
+    provider="anthropic",
+    Authorization="sk-ant-***",
+    anthropic_version="2023-06-01",           # API version
+    anthropic_beta="prompt-caching-2024-07-31" # Beta features
+)
+```
+
+| Header | Description | Default | Required |
+|--------|-------------|---------|----------|
+| `Authorization` | Anthropic API key | - | Yes |
+| `anthropic_version` | API version | `2023-06-01` | No |
+| `anthropic_beta` | Beta feature flags | `messages-2023-12-15` | No |
+
+### Body Parameters
+
+You can also pass these in the request body:
+
+```python
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[{"role": "user", "content": "Hello"}],
+    max_tokens=1024,
+    anthropic_version="2023-06-01",  # Can be in body
+    anthropic_beta="prompt-caching-2024-07-31"  # Can be in body
+)
+```
+
+## Advanced Features
+
+### System Prompts
+
+Claude supports powerful system prompts:
+
+```python
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[
+        {
+            "role": "system",
+            "content": "You are a helpful AI assistant specialized in Python programming. Provide clear, concise code examples."
+        },
+        {
+            "role": "user",
+            "content": "How do I read a CSV file in Python?"
+        }
+    ],
+    max_tokens=500
+)
+```
+
+### Tool Use (Function Calling)
+
+```python
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather in a given location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "The city and state, e.g. San Francisco, CA"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"],
+                        "description": "The unit of temperature"
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[{"role": "user", "content": "What's the weather in Paris?"}],
+    tools=tools,
+    max_tokens=1024
+)
+
+if response.choices[0].message.tool_calls:
+    tool_call = response.choices[0].message.tool_calls[0]
+    print(f"Function: {tool_call.function.name}")
+    print(f"Arguments: {tool_call.function.arguments}")
+```
+
+### Vision (Image Analysis)
+
+Claude 3 models support image inputs:
+
+```python
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[{
+        "role": "user",
+        "content": [
+            {
+                "type": "text",
+                "text": "What's in this image? Describe it in detail."
+            },
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": "https://example.com/image.jpg"
+                }
+            }
+        ]
+    }],
+    max_tokens=1024
+)
+```
+
+You can also use base64-encoded images:
+
+```python
+import base64
+
+with open("image.jpg", "rb") as image_file:
+    image_data = base64.b64encode(image_file.read()).decode('utf-8')
+
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "Describe this image"},
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{image_data}"
+                }
+            }
+        ]
+    }],
+    max_tokens=1024
+)
+```
+
+### Prompt Caching
+
+Reduce costs by caching frequently used prompts:
+
+```python
+client = Portkey(
+    provider="anthropic",
+    Authorization="sk-ant-***",
+    anthropic_beta="prompt-caching-2024-07-31"
+)
+
+# Large system prompt that will be cached
+large_context = """[Your large context here - documentation, examples, etc.]"""
+
+response = client.chat.completions.create(
+    model="claude-3-5-sonnet-20241022",
+    messages=[
+        {"role": "system", "content": large_context},
+        {"role": "user", "content": "Question about the context"}
+    ],
+    max_tokens=1024
+)
+```
+
+### Token Counting
+
+Count tokens before making a request:
+
+```python
+# Using the native Anthropic API through Portkey
+response = client.messages.count_tokens(
+    model="claude-3-5-sonnet-20241022",
+    messages=[{"role": "user", "content": "Hello, Claude!"}]
+)
+
+print(f"Input tokens: {response.input_tokens}")
+```
+
+## Fallback Configuration
+
+Use GPT-4 as fallback for Claude:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {
+            "provider": "anthropic",
+            "api_key": "sk-ant-***",
+            "override_params": {"model": "claude-3-5-sonnet-20241022"}
+        },
+        {
+            "provider": "openai",
+            "api_key": "sk-***",
+            "override_params": {"model": "gpt-4o"}
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+
+response = client.chat.completions.create(
+    messages=[{"role": "user", "content": "Hello!"}],
+    max_tokens=100
+)
+```
+
+## Load Balancing
+
+Distribute load across different Claude models:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "provider": "anthropic",
+            "api_key": "sk-ant-***",
+            "override_params": {"model": "claude-3-5-sonnet-20241022"},
+            "weight": 0.7
+        },
+        {
+            "provider": "anthropic",
+            "api_key": "sk-ant-***",
+            "override_params": {"model": "claude-3-5-haiku-20241022"},
+            "weight": 0.3
+        }
+    ]
+}
+
+client = Portkey().with_options(config=config)
+```
+
+## Error Handling
+
+```python
+from portkey_ai.exceptions import (
+    RateLimitError,
+    APIError,
+    AuthenticationError
+)
+
+try:
+    response = client.chat.completions.create(
+        model="claude-3-5-sonnet-20241022",
+        messages=[{"role": "user", "content": "Hello"}],
+        max_tokens=1024
+    )
+except RateLimitError as e:
+    print(f"Rate limit exceeded: {e}")
+except AuthenticationError as e:
+    print(f"Invalid API key: {e}")
+except APIError as e:
+    print(f"API error: {e}")
+```
+
+## Request & Response Format
+
+### Request
+
+```json
+{
+  "model": "claude-3-5-sonnet-20241022",
+  "messages": [
+    {"role": "user", "content": "Hello, Claude!"}
+  ],
+  "max_tokens": 1024,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "top_k": 5
+}
+```
+
+### Response
+
+```json
+{
+  "id": "msg_01XFDUDYJgAACzvnptvVoYEL",
+  "type": "message",
+  "role": "assistant",
+  "content": [{
+    "type": "text",
+    "text": "Hello! How can I assist you today?"
+  }],
+  "model": "claude-3-5-sonnet-20241022",
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 10,
+    "output_tokens": 15
+  }
+}
+```
+
+## Best Practices
+
+1. **Always set max_tokens** - Required parameter for Claude
+2. **Use system prompts** - Claude responds well to detailed system instructions
+3. **Leverage long context** - Claude handles 200K tokens effectively
+4. **Enable prompt caching** - Save costs on repeated large contexts
+5. **Use Haiku for speed** - When fast responses matter more than complexity
+6. **Implement streaming** - For better user experience with long responses
+7. **Add retry logic** - Handle rate limits gracefully
+
+## Important Differences from OpenAI
+
+| Feature | OpenAI | Anthropic |
+|---------|--------|--------|
+| `max_tokens` | Optional | **Required** |
+| System messages | In messages array | In messages array |
+| Context window | Up to 128K | Up to 200K |
+| Embeddings | ✅ Available | ❌ Not available |
+| Image generation | ✅ DALL-E | ❌ Not available |
+| Audio | ✅ TTS, STT | ❌ Not available |
+
+## Pricing
+
+For up-to-date Anthropic pricing:
+
+<Card title="Anthropic Pricing" icon="dollar-sign" href="https://portkey.ai/models?provider=anthropic">
+  View detailed pricing for all Claude models
+</Card>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="AWS Bedrock" icon="aws" href="/providers/bedrock">
+    Use Claude through AWS Bedrock
+  </Card>
+  <Card title="Fallback Routing" icon="arrows-rotate" href="/essentials/fallbacks">
+    Set up fallbacks from Anthropic
+  </Card>
+  <Card title="Prompt Caching" icon="database" href="/essentials/caching">
+    Reduce costs with caching
+  </Card>
+  <Card title="Tool Use" icon="wrench" href="/essentials/function-calling">
+    Advanced tool use guide
+  </Card>
+</CardGroup>

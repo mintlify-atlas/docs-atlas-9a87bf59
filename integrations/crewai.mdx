@@ -1,0 +1,757 @@
+---
+title: "CrewAI Integration"
+description: "Use Portkey AI Gateway with CrewAI for orchestrated multi-agent systems"
+---
+
+Integrate Portkey with CrewAI to build production-ready multi-agent systems with access to 250+ LLMs, automatic fallbacks, and complete observability.
+
+## Overview
+
+Portkey enhances CrewAI applications with:
+
+- **Multi-Provider Support**: Route crew agents to 250+ different LLMs
+- **Crew Observability**: Full logging and tracing for all agent interactions
+- **Reliability**: Automatic fallbacks and retries for mission-critical tasks
+- **Cost Optimization**: Track and optimize token usage across your crew
+- **Performance**: Smart caching for repeated tasks
+
+## Installation
+
+```bash
+pip install portkey-ai crewai crewai-tools
+```
+
+## Quick Start
+
+CrewAI integrates seamlessly with Portkey through OpenAI-compatible configuration:
+
+<Steps>
+  <Step title="Import Libraries">
+    ```python
+    from crewai import Agent, Task, Crew, LLM
+    from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+    ```
+  </Step>
+  
+  <Step title="Configure Portkey">
+    ```python
+    portkey_headers = createHeaders(
+        api_key="your-portkey-api-key",
+        provider="openai"
+    )
+    ```
+  </Step>
+  
+  <Step title="Create LLM Instance">
+    ```python
+    llm = LLM(
+        model="gpt-4",
+        api_key="your-openai-api-key",
+        base_url=PORTKEY_GATEWAY_URL,
+        default_headers=portkey_headers
+    )
+    ```
+  </Step>
+  
+  <Step title="Create Agent">
+    ```python
+    researcher = Agent(
+        role="Research Specialist",
+        goal="Find accurate information",
+        backstory="Expert researcher with attention to detail",
+        llm=llm
+    )
+    ```
+  </Step>
+  
+  <Step title="Create and Run Crew">
+    ```python
+    task = Task(
+        description="Research the latest AI trends",
+        agent=researcher,
+        expected_output="Comprehensive research report"
+    )
+    
+    crew = Crew(agents=[researcher], tasks=[task])
+    result = crew.kickoff()
+    print(result)
+    ```
+  </Step>
+</Steps>
+
+## Complete Crew Example
+
+Build a complete content creation crew:
+
+```python
+from crewai import Agent, Task, Crew, LLM
+from crewai_tools import SerperDevTool
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+# Configure Portkey
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={
+        "environment": "production",
+        "crew": "content_creation"
+    }
+)
+
+# Create LLM
+llm = LLM(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers,
+    temperature=0.7
+)
+
+# Initialize tools
+search_tool = SerperDevTool()
+
+# Create Researcher Agent
+researcher = Agent(
+    role="Senior Research Analyst",
+    goal="Uncover cutting-edge developments in AI and data science",
+    backstory="""You are an expert at finding and analyzing information.
+    You have a knack for finding the most relevant data.""",
+    llm=llm,
+    tools=[search_tool],
+    verbose=True
+)
+
+# Create Writer Agent
+writer = Agent(
+    role="Tech Content Strategist",
+    goal="Craft compelling content on tech advancements",
+    backstory="""You are a renowned content creator, known for your 
+    insightful and engaging articles.""",
+    llm=llm,
+    verbose=True
+)
+
+# Create Editor Agent
+editor = Agent(
+    role="Chief Editor",
+    goal="Ensure all content meets highest standards",
+    backstory="""You are a meticulous editor with an eye for detail. 
+    You ensure content is polished and error-free.""",
+    llm=llm,
+    verbose=True
+)
+
+# Define Tasks
+research_task = Task(
+    description="""Research the latest trends in AI for 2024.
+    Focus on practical applications and breakthrough technologies.""",
+    agent=researcher,
+    expected_output="Detailed research findings with sources"
+)
+
+writing_task = Task(
+    description="""Using the research findings, write an engaging article
+    about AI trends. Make it accessible yet informative.""",
+    agent=writer,
+    expected_output="Well-written article draft"
+)
+
+editing_task = Task(
+    description="""Edit the article for clarity, grammar, and impact.
+    Ensure it follows best practices for technical writing.""",
+    agent=editor,
+    expected_output="Polished, publication-ready article"
+)
+
+# Create and run crew
+crew = Crew(
+    agents=[researcher, writer, editor],
+    tasks=[research_task, writing_task, editing_task],
+    verbose=True
+)
+
+result = crew.kickoff()
+print(result)
+```
+
+## Using Different Providers
+
+Assign different LLM providers to different agents:
+
+<CodeGroup>
+```python GPT-4 for Complex Tasks
+portkey_headers_gpt4 = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm_gpt4 = LLM(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers_gpt4
+)
+
+lead_agent = Agent(
+    role="Lead Strategist",
+    goal="Coordinate team efforts",
+    backstory="Strategic thinker",
+    llm=llm_gpt4
+)
+```
+
+```python Claude for Analysis
+portkey_headers_claude = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="anthropic"
+)
+
+llm_claude = LLM(
+    model="claude-3-opus-20240229",
+    api_key="your-anthropic-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers_claude
+)
+
+analyst = Agent(
+    role="Data Analyst",
+    goal="Analyze complex data",
+    backstory="Expert analyst",
+    llm=llm_claude
+)
+```
+
+```python GPT-3.5 for Simple Tasks
+portkey_headers_gpt35 = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm_gpt35 = LLM(
+    model="gpt-3.5-turbo",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers_gpt35
+)
+
+assistant = Agent(
+    role="Assistant",
+    goal="Handle routine tasks",
+    backstory="Efficient helper",
+    llm=llm_gpt35
+)
+```
+</CodeGroup>
+
+## Advanced Routing
+
+### Fallback Configuration
+
+Automatically fallback to backup providers:
+
+```python
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+from crewai import Agent, LLM
+
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"virtual_key": "openai-virtual-key"},
+        {"virtual_key": "anthropic-virtual-key"},
+        {"virtual_key": "together-virtual-key"}
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+
+llm = LLM(
+    model="gpt-4",
+    api_key="X",  # Virtual keys in config
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+agent = Agent(
+    role="Resilient Agent",
+    goal="Complete tasks reliably",
+    backstory="Never gives up",
+    llm=llm
+)
+```
+
+### Load Balancing
+
+Distribute crew workload across multiple providers:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "virtual_key": "openai-key-1",
+            "weight": 0.7
+        },
+        {
+            "virtual_key": "openai-key-2",
+            "weight": 0.3
+        }
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+```
+
+### Retry Configuration
+
+Handle transient failures:
+
+```python
+config = {
+    "retry": {
+        "attempts": 5,
+        "on_status_codes": [429, 500, 502, 503]
+    }
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    config=config
+)
+```
+
+## Crew Observability
+
+Track individual agents with custom metadata:
+
+```python
+def create_llm_for_agent(agent_name, agent_role):
+    """Create LLM with agent-specific tracking"""
+    portkey_headers = createHeaders(
+        api_key="your-portkey-api-key",
+        provider="openai",
+        metadata={
+            "agent_name": agent_name,
+            "agent_role": agent_role,
+            "crew_id": "crew_001"
+        },
+        trace_id=f"agent-{agent_name}"
+    )
+    
+    return LLM(
+        model="gpt-4",
+        api_key="your-openai-api-key",
+        base_url=PORTKEY_GATEWAY_URL,
+        default_headers=portkey_headers
+    )
+
+# Create tracked agents
+researcher = Agent(
+    role="Researcher",
+    goal="Research topics",
+    backstory="Expert researcher",
+    llm=create_llm_for_agent("researcher", "research")
+)
+
+writer = Agent(
+    role="Writer",
+    goal="Write content",
+    backstory="Skilled writer",
+    llm=create_llm_for_agent("writer", "writing")
+)
+```
+
+## Caching for Crews
+
+Reduce costs for repeated tasks:
+
+```python
+config = {
+    "cache": {
+        "mode": "semantic",
+        "max_age": 3600  # 1 hour
+    }
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    config=config
+)
+
+llm = LLM(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+## Sequential vs Hierarchical Crews
+
+### Sequential Crew with Portkey
+
+```python
+from crewai import Agent, Task, Crew, LLM, Process
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = LLM(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Create sequential workflow
+planner = Agent(
+    role="Project Planner",
+    goal="Create detailed project plans",
+    backstory="Expert at planning",
+    llm=llm
+)
+
+executor = Agent(
+    role="Executor",
+    goal="Execute planned tasks",
+    backstory="Gets things done",
+    llm=llm
+)
+
+reviewer = Agent(
+    role="Quality Reviewer",
+    goal="Review completed work",
+    backstory="Attention to detail",
+    llm=llm
+)
+
+plan_task = Task(
+    description="Create a project plan",
+    agent=planner,
+    expected_output="Detailed project plan"
+)
+
+execute_task = Task(
+    description="Execute the plan",
+    agent=executor,
+    expected_output="Completed work"
+)
+
+review_task = Task(
+    description="Review the work",
+    agent=reviewer,
+    expected_output="Quality report"
+)
+
+crew = Crew(
+    agents=[planner, executor, reviewer],
+    tasks=[plan_task, execute_task, review_task],
+    process=Process.sequential,
+    verbose=True
+)
+
+result = crew.kickoff()
+```
+
+### Hierarchical Crew with Portkey
+
+```python
+from crewai import Agent, Task, Crew, LLM, Process
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = LLM(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Manager will be created automatically
+researcher = Agent(
+    role="Researcher",
+    goal="Research information",
+    backstory="Expert researcher",
+    llm=llm
+)
+
+analyst = Agent(
+    role="Analyst",
+    goal="Analyze data",
+    backstory="Data expert",
+    llm=llm
+)
+
+tasks = [
+    Task(
+        description="Research AI trends",
+        agent=researcher,
+        expected_output="Research report"
+    ),
+    Task(
+        description="Analyze the trends",
+        agent=analyst,
+        expected_output="Analysis report"
+    )
+]
+
+crew = Crew(
+    agents=[researcher, analyst],
+    tasks=tasks,
+    process=Process.hierarchical,
+    manager_llm=llm,  # Manager uses Portkey too
+    verbose=True
+)
+
+result = crew.kickoff()
+```
+
+## Using CrewAI Tools
+
+Integrate tools with Portkey-powered agents:
+
+```python
+from crewai import Agent, Task, Crew, LLM
+from crewai_tools import (
+    SerperDevTool,
+    ScrapeWebsiteTool,
+    FileReadTool
+)
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = LLM(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Initialize tools
+search_tool = SerperDevTool()
+scrape_tool = ScrapeWebsiteTool()
+file_tool = FileReadTool()
+
+# Create agent with multiple tools
+research_agent = Agent(
+    role="Research Specialist",
+    goal="Gather comprehensive information",
+    backstory="Expert at using multiple sources",
+    tools=[search_tool, scrape_tool, file_tool],
+    llm=llm,
+    verbose=True
+)
+
+task = Task(
+    description="Research and compile information about AI startups",
+    agent=research_agent,
+    expected_output="Comprehensive report with sources"
+)
+
+crew = Crew(
+    agents=[research_agent],
+    tasks=[task],
+    verbose=True
+)
+
+result = crew.kickoff()
+```
+
+## Memory and Context
+
+Use CrewAI's memory features with Portkey:
+
+```python
+from crewai import Agent, Task, Crew, LLM
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = LLM(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+agent = Agent(
+    role="Personal Assistant",
+    goal="Help with various tasks",
+    backstory="Helpful assistant with memory",
+    llm=llm,
+    memory=True  # Enable memory
+)
+
+crew = Crew(
+    agents=[agent],
+    tasks=[...],
+    memory=True,  # Enable crew-level memory
+    verbose=True
+)
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Track Each Agent">
+    Add agent-specific metadata for better debugging:
+    ```python
+    metadata={"agent_name": "researcher", "crew_id": "crew_001"}
+    ```
+  </Accordion>
+  
+  <Accordion title="Use Fallbacks for Production">
+    Configure fallbacks for critical crews:
+    ```python
+    config = {"strategy": {"mode": "fallback"}, "targets": [...]}
+    ```
+  </Accordion>
+  
+  <Accordion title="Enable Caching">
+    Use caching for crews with repeated tasks:
+    ```python
+    config = {"cache": {"mode": "semantic", "max_age": 3600}}
+    ```
+  </Accordion>
+  
+  <Accordion title="Monitor Token Usage">
+    Track token usage per agent to optimize costs in the Portkey dashboard.
+  </Accordion>
+  
+  <Accordion title="Different Models for Different Roles">
+    Use GPT-4 for complex tasks, GPT-3.5 for simpler ones to optimize costs.
+  </Accordion>
+</AccordionGroup>
+
+## Example: Market Research Crew
+
+Complete market research crew with Portkey:
+
+```python
+from crewai import Agent, Task, Crew, LLM
+from crewai_tools import SerperDevTool
+from portkey_ai import PORTKEY_GATEWAY_URL, createHeaders
+
+# Configure Portkey
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={"project": "market_research"}
+)
+
+llm = LLM(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    base_url=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+search_tool = SerperDevTool()
+
+# Market Research Agent
+market_researcher = Agent(
+    role="Market Research Analyst",
+    goal="Analyze market trends and opportunities",
+    backstory="Expert in market analysis with 10 years experience",
+    tools=[search_tool],
+    llm=llm,
+    verbose=True
+)
+
+# Competitive Analyst
+competitive_analyst = Agent(
+    role="Competitive Intelligence Specialist",
+    goal="Identify and analyze competitors",
+    backstory="Expert at competitive analysis",
+    tools=[search_tool],
+    llm=llm,
+    verbose=True
+)
+
+# Report Writer
+report_writer = Agent(
+    role="Business Report Writer",
+    goal="Create comprehensive business reports",
+    backstory="Skilled at synthesizing complex information",
+    llm=llm,
+    verbose=True
+)
+
+# Define tasks
+market_analysis_task = Task(
+    description="""Analyze the AI tools market. Focus on:
+    1. Market size and growth
+    2. Key trends
+    3. Customer segments
+    4. Opportunities""",
+    agent=market_researcher,
+    expected_output="Detailed market analysis"
+)
+
+competitive_analysis_task = Task(
+    description="""Identify and analyze top 5 competitors in AI tools space.
+    Include strengths, weaknesses, and market positioning.""",
+    agent=competitive_analyst,
+    expected_output="Competitive analysis report"
+)
+
+report_task = Task(
+    description="""Create a comprehensive market research report combining
+    market analysis and competitive intelligence. Include recommendations.""",
+    agent=report_writer,
+    expected_output="Executive market research report"
+)
+
+# Create and run crew
+crew = Crew(
+    agents=[market_researcher, competitive_analyst, report_writer],
+    tasks=[market_analysis_task, competitive_analysis_task, report_task],
+    verbose=True
+)
+
+result = crew.kickoff()
+print(result)
+```
+
+## Monitoring Crew Performance
+
+View detailed crew metrics in the Portkey dashboard:
+
+- Per-agent token usage and costs
+- Task completion times
+- Error rates by agent
+- Cache hit rates
+- Conversation flows between agents
+- Custom metadata filtering
+
+## Resources
+
+- [CrewAI Documentation](https://docs.crewai.com/)
+- [Portkey Gateway Configs](/concepts/configs)
+- [CrewAI Tools](https://github.com/joaomdmoura/crewAI-tools)
+- [Example Notebooks](https://github.com/Portkey-AI/gateway/tree/main/cookbook/monitoring-agents)
+
+<Note>
+  Questions? Join our [Discord community](https://discord.gg/portkey) for help with CrewAI implementations.
+</Note>

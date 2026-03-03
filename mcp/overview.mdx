@@ -1,0 +1,143 @@
+---
+title: "MCP Gateway Overview"
+description: "Centralized control plane for managing Model Context Protocol servers across your organization"
+---
+
+## What is MCP Gateway?
+
+MCP Gateway provides a centralized control plane for managing MCP (Model Context Protocol) servers across your organization. It sits between your MCP clients (like Claude Desktop, Cursor, VS Code) and your MCP servers, providing enterprise-grade authentication, access control, and observability.
+
+<Note>
+MCP Gateway works with any MCP-compatible client including Claude Desktop, Cursor, VS Code, and custom implementations.
+</Note>
+
+## Key Benefits
+
+MCP Gateway solves critical challenges when deploying MCP servers at scale:
+
+### Single Authentication Layer
+
+Users authenticate once at the gateway level. Your MCP servers receive verified requests without managing individual credentials.
+
+- Centralized user authentication
+- No need to distribute API keys to each server
+- Automatic token refresh and session management
+- Support for SSO and identity providers
+
+### Granular Access Control
+
+Control which teams and users can access specific servers and tools:
+
+- Role-based access control (RBAC)
+- Team-level permissions
+- Tool-level access restrictions
+- Instant access revocation
+
+### Complete Observability
+
+Every tool call is logged with full context:
+
+- Who called which tool
+- Request parameters and responses
+- Latency and performance metrics
+- Error tracking and debugging
+
+### Identity Forwarding
+
+Automatically forward user context to your MCP servers:
+
+- User email and team information
+- Custom roles and attributes
+- Organizational metadata
+- Contextual permissions
+
+## Architecture
+
+MCP Gateway uses a proxy architecture that transparently sits between clients and servers:
+
+```
+MCP Client (Claude, Cursor, etc.)
+        ↓
+  MCP Gateway (Authentication, Authorization, Logging)
+        ↓
+  MCP Servers (Your tools and resources)
+```
+
+### How It Works
+
+1. **Client Connection**: MCP client connects to the gateway instead of directly to servers
+2. **Authentication**: Gateway validates user credentials and issues session tokens
+3. **Authorization**: Gateway checks user permissions before forwarding requests
+4. **Request Forwarding**: Authorized requests are forwarded to appropriate MCP servers with user context
+5. **Response Logging**: All requests and responses are logged for observability
+6. **Response Return**: Server responses flow back through gateway to client
+
+## Use Cases
+
+### Enterprise MCP Deployment
+
+Deploy MCP servers across your organization with centralized control:
+
+- Manage access for hundreds of developers
+- Enforce security policies
+- Track usage and costs
+- Monitor performance
+
+### Multi-Tenant MCP Services
+
+Provide MCP services to multiple customers:
+
+- Isolate customer data and access
+- Bill based on usage
+- Provide customer-specific tools
+- Monitor per-customer metrics
+
+### Regulated Industries
+
+Meet compliance requirements for AI tool usage:
+
+- Audit trail for all AI interactions
+- Data privacy and residency controls
+- User consent and approval workflows
+- Compliance reporting
+
+## Getting Started
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/mcp/quickstart">
+    Get started with MCP Gateway in minutes
+  </Card>
+  
+  <Card title="Authentication" icon="lock" href="/mcp/authentication">
+    Configure authentication for your gateway
+  </Card>
+  
+  <Card title="Access Control" icon="shield" href="/mcp/access-control">
+    Set up team and user permissions
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>
+
+## Supported Clients
+
+MCP Gateway works with any client that implements the Model Context Protocol:
+
+- **Claude Desktop**: Anthropic's desktop application
+- **Cursor**: AI-powered code editor
+- **VS Code**: Via MCP extension
+- **Custom Clients**: Any MCP-compatible implementation
+
+<Info>
+The gateway is protocol-compliant and doesn't require client-side modifications. Simply point your existing MCP clients to the gateway endpoint.
+</Info>
+
+## Next Steps
+
+Ready to deploy MCP Gateway? Follow our quickstart guide to get up and running:
+
+<Card title="Quickstart Guide" icon="play" href="/mcp/quickstart" horizontal>
+  Set up your first MCP Gateway in under 10 minutes
+</Card>

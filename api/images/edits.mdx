@@ -1,0 +1,317 @@
+---
+title: 'Edit Images'
+description: 'POST /v1/images/edits - Edit images with text prompts'
+---
+
+## Endpoint
+
+```
+POST /v1/images/edits
+```
+
+Creates an edited or extended version of an existing image based on a prompt.
+
+## Request
+
+### Headers
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `multipart/form-data`
+</ParamField>
+
+<ParamField header="x-portkey-provider" type="string" required>
+  The AI provider to use (e.g., `openai`)
+</ParamField>
+
+<ParamField header="x-portkey-api-key" type="string" required>
+  Your API key for the specified provider
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="image" type="file" required>
+  The image to edit. Must be a valid PNG file, less than 4MB, and square. If mask is not provided, image must have transparency.
+</ParamField>
+
+<ParamField body="prompt" type="string" required>
+  A text description of the desired edits. Maximum length is 1000 characters.
+</ParamField>
+
+<ParamField body="mask" type="file">
+  An additional image whose fully transparent areas indicate where the original image should be edited. Must be a PNG file, less than 4MB, and have the same dimensions as the original image.
+</ParamField>
+
+<ParamField body="model" type="string">
+  The model to use for image editing. Currently only `dall-e-2` is supported.
+</ParamField>
+
+<ParamField body="n" type="integer" default={1}>
+  Number of edited images to generate (1-10)
+</ParamField>
+
+<ParamField body="size" type="string" default="1024x1024">
+  Size of the generated images: `256x256`, `512x512`, or `1024x1024`
+</ParamField>
+
+<ParamField body="response_format" type="string" default="url">
+  Format of the response: `url` or `b64_json`
+</ParamField>
+
+<ParamField body="user" type="string">
+  Unique identifier for the end-user
+</ParamField>
+
+## Response
+
+<ResponseField name="created" type="integer">
+  Unix timestamp of when the edited image was created
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of edited images
+  
+  <ResponseField name="url" type="string">
+    URL of the edited image (when `response_format` is `url`)
+  </ResponseField>
+  
+  <ResponseField name="b64_json" type="string">
+    Base64-encoded image data (when `response_format` is `b64_json`)
+  </ResponseField>
+</ResponseField>
+
+## Examples
+
+### Basic Image Edit
+
+```bash
+curl http://localhost:8787/v1/images/edits \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -F image="@original.png" \
+  -F prompt="Add a party hat to the cat" \
+  -F n=1 \
+  -F size="1024x1024"
+```
+
+### Response
+
+```json
+{
+  "created": 1677652288,
+  "data": [
+    {
+      "url": "https://..."
+    }
+  ]
+}
+```
+
+### Python SDK
+
+```python
+from portkey_ai import Portkey
+from pathlib import Path
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.images.edit(
+    image=Path("original.png").read_bytes(),
+    prompt="Add a party hat to the cat",
+    n=1,
+    size="1024x1024"
+)
+
+image_url = response.data[0].url
+print(f"Edited image URL: {image_url}")
+```
+
+### JavaScript SDK
+
+```javascript
+import Portkey from 'portkey-ai';
+import fs from 'fs';
+
+const client = new Portkey({
+  provider: 'openai',
+  Authorization: 'sk-...'
+});
+
+const response = await client.images.edit({
+  image: fs.createReadStream('original.png'),
+  prompt: 'Add a party hat to the cat',
+  n: 1,
+  size: '1024x1024'
+});
+
+const imageUrl = response.data[0].url;
+console.log(`Edited image URL: ${imageUrl}`);
+```
+
+### Using a Mask
+
+```bash
+curl http://localhost:8787/v1/images/edits \
+  -H "x-portkey-provider: openai" \
+  -H "x-portkey-api-key: sk-..." \
+  -F image="@original.png" \
+  -F mask="@mask.png" \
+  -F prompt="A sunflower in a vase" \
+  -F n=2 \
+  -F size="1024x1024"
+```
+
+### Python with Mask
+
+```python
+from portkey_ai import Portkey
+from pathlib import Path
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.images.edit(
+    image=Path("original.png").read_bytes(),
+    mask=Path("mask.png").read_bytes(),
+    prompt="A sunflower in a vase",
+    n=2,
+    size="1024x1024"
+)
+
+for i, img in enumerate(response.data):
+    print(f"Image {i+1}: {img.url}")
+```
+
+### Download Edited Image
+
+```python
+from portkey_ai import Portkey
+import requests
+from pathlib import Path
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.images.edit(
+    image=Path("original.png").read_bytes(),
+    prompt="Change the background to a beach scene",
+    n=1,
+    size="1024x1024"
+)
+
+# Download and save
+image_url = response.data[0].url
+image_data = requests.get(image_url).content
+Path("edited_image.png").write_bytes(image_data)
+print("Edited image saved!")
+```
+
+### Base64 Response
+
+```python
+from portkey_ai import Portkey
+import base64
+from pathlib import Path
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.images.edit(
+    image=Path("original.png").read_bytes(),
+    prompt="Add magical sparkles around the object",
+    response_format="b64_json"
+)
+
+# Decode and save
+image_data = base64.b64decode(response.data[0].b64_json)
+Path("edited.png").write_bytes(image_data)
+```
+
+### Generate Multiple Variations
+
+```python
+from portkey_ai import Portkey
+from pathlib import Path
+import requests
+
+client = Portkey(
+    provider="openai",
+    Authorization="sk-..."
+)
+
+response = client.images.edit(
+    image=Path("original.png").read_bytes(),
+    prompt="Change the color scheme to vibrant and colorful",
+    n=4,
+    size="1024x1024"
+)
+
+# Save all variations
+for i, img_data in enumerate(response.data):
+    image_content = requests.get(img_data.url).content
+    Path(f"variation_{i+1}.png").write_bytes(image_content)
+    print(f"Saved variation {i+1}")
+```
+
+## Creating Masks
+
+Masks are PNG images where:
+- **Transparent pixels** (alpha = 0) indicate areas to edit
+- **Opaque pixels** (alpha = 255) indicate areas to keep unchanged
+
+### Creating a Mask in Python (PIL)
+
+```python
+from PIL import Image
+import numpy as np
+
+# Load original image
+img = Image.open("original.png").convert("RGBA")
+width, height = img.size
+
+# Create a new image with transparency
+mask = Image.new("RGBA", (width, height), (255, 255, 255, 255))
+
+# Make a circular area transparent (to be edited)
+center_x, center_y = width // 2, height // 2
+radius = 200
+
+for x in range(width):
+    for y in range(height):
+        if (x - center_x)**2 + (y - center_y)**2 < radius**2:
+            mask.putpixel((x, y), (255, 255, 255, 0))
+
+mask.save("mask.png")
+```
+
+## Image Requirements
+
+1. **Format**: Must be PNG with RGBA support
+2. **Size**: Less than 4MB
+3. **Dimensions**: Must be square (same width and height)
+4. **Supported Sizes**: 256x256, 512x512, or 1024x1024
+5. **Transparency**: If no mask is provided, the image must have transparent areas
+
+## Tips for Better Edits
+
+1. **Clear Prompts**: Be specific about what you want to change
+2. **Use Masks**: For precise control over edit regions
+3. **Quality Images**: Start with high-quality, clear images
+4. **Appropriate Size**: Use larger sizes (1024x1024) for better detail
+5. **Generate Multiple**: Use `n > 1` to get variations
+
+## Common Use Cases
+
+- **Object Replacement**: Replace objects in images
+- **Background Changes**: Change backgrounds while keeping subjects
+- **Style Transfer**: Apply different styles to image regions
+- **Inpainting**: Fill in missing or unwanted parts of images
+- **Enhancement**: Add details or elements to existing images

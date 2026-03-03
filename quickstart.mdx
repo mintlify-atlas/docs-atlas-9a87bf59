@@ -1,80 +1,290 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get started with Portkey AI Gateway in under 5 minutes"
 ---
 
-## Get started in three steps
+## Overview
 
-Get your documentation site running locally and make your first customization.
+This quickstart guide will help you:
+1. Run the AI Gateway locally
+2. Make your first API call to an LLM
+3. Add routing rules and guardrails
 
-### Step 1: Set up your local environment
+<Note>
+  **Prerequisites**: You'll need Node.js installed and an API key from any LLM provider (OpenAI, Anthropic, etc.)
+</Note>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## Step 1: Start the Gateway
 
-### Step 2: Deploy your changes
+The fastest way to run the gateway is using `npx`:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<CodeGroup>
+```bash npm
+npx @portkey-ai/gateway
+```
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+```bash bun
+bunx @portkey-ai/gateway
+```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+```bash docker
+docker run --rm -p 8787:8787 portkeyai/gateway:latest
+```
+</CodeGroup>
 
-### Step 3: Go live
+<Check>
+  The Gateway is now running on `http://localhost:8787/v1`
+  
+  The Gateway Console is available at `http://localhost:8787/public/`
+</Check>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<Tip>
+  For production deployments, see the [installation guide](/installation) for Docker, Kubernetes, and cloud options.
+</Tip>
 
-## Next steps
+## Step 2: Make Your First Request
 
-Now that you have your docs running, explore these key features:
+Now let's send a request through the gateway. The gateway provides an OpenAI-compatible API, so you can use any OpenAI SDK or HTTP client.
+
+<CodeGroup>
+```python Python
+# pip install -qU portkey-ai
+
+from portkey_ai import Portkey
+
+# OpenAI compatible client
+client = Portkey(
+    base_url="http://localhost:8787/v1",  # Your local gateway
+    provider="openai",  # or 'anthropic', 'bedrock', 'groq', etc
+    Authorization="sk-***"  # Your provider API key
+)
+
+# Make a request through your AI Gateway
+response = client.chat.completions.create(
+    messages=[{"role": "user", "content": "What's the weather like?"}],
+    model="gpt-4o-mini"
+)
+
+print(response.choices[0].message.content)
+```
+
+```javascript JavaScript
+// npm install portkey-ai
+
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    baseURL: "http://localhost:8787/v1",
+    provider: "openai",
+    Authorization: "sk-***"
+});
+
+const response = await client.chat.completions.create({
+    messages: [{ role: "user", content: "What's the weather like?" }],
+    model: "gpt-4o-mini"
+});
+
+console.log(response.choices[0].message.content);
+```
+
+```bash cURL
+curl http://localhost:8787/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer sk-***" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is the weather like?"
+      }
+    ]
+  }'
+```
+</CodeGroup>
+
+<Check>
+  **Success!** You just made your first request through the AI Gateway.
+</Check>
+
+### View Your Logs
+
+Open the Gateway Console at `http://localhost:8787/public/` to see all your requests and responses in one place:
+
+<img src="https://github.com/user-attachments/assets/362bc916-0fc9-43f1-a39e-4bd71aac4a3a" width="600" alt="Gateway Console showing request logs" />
+
+## Step 3: Add Routing & Guardrails
+
+Now let's add some production-ready features. Configs allow you to create routing rules, add reliability, and setup guardrails.
+
+### Add Automatic Retries
+
+```python
+config = {
+    "retry": {
+        "attempts": 5
+    }
+}
+
+# Attach the config to the client
+client = client.with_options(config=config)
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+<Tip>
+  Failed requests will automatically retry up to 5 times with exponential backoff.
+</Tip>
+
+### Add Output Guardrails
+
+Validate and filter LLM responses:
+
+```python
+config = {
+    "retry": {"attempts": 5},
+    "output_guardrails": [{
+        "default.contains": {
+            "operator": "none",
+            "words": ["Apple"]
+        },
+        "deny": True
+    }]
+}
+
+client = client.with_options(config=config)
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Reply randomly with Apple or Bat"}]
+)
+
+# This will always respond with "Bat" since the guardrail denies "Apple"
+```
+
+<img src="https://portkey.ai/blog/content/images/size/w1600/2024/11/image-15.png" width="600" title="Request flow with retries and guardrails" alt="Request flow through Portkey's AI gateway" />
+
+### Setup Fallback Routing
+
+Automatically failover to a backup provider:
+
+```python
+config = {
+    "strategy": {
+        "mode": "fallback"
+    },
+    "targets": [
+        {
+            "provider": "openai",
+            "api_key": "sk-***"
+        },
+        {
+            "provider": "anthropic",
+            "api_key": "sk-ant-***"
+        }
+    ]
+}
+
+client = client.with_options(config=config)
+
+# If OpenAI fails, the request automatically goes to Anthropic
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+```
+
+<Warning>
+  Make sure both providers support the model you're requesting, or specify different models in the config.
+</Warning>
+
+### Load Balancing
+
+Distribute requests across multiple API keys:
+
+```python
+config = {
+    "strategy": {
+        "mode": "loadbalance"
+    },
+    "targets": [
+        {
+            "provider": "openai",
+            "api_key": "sk-key1-***",
+            "weight": 0.7
+        },
+        {
+            "provider": "openai",
+            "api_key": "sk-key2-***",
+            "weight": 0.3
+        }
+    ]
+}
+
+client = client.with_options(config=config)
+
+# 70% of requests use key1, 30% use key2
+```
+
+## Supported Libraries & Frameworks
+
+The AI Gateway works with all major libraries and frameworks:
+
+<CardGroup cols={3}>
+  <Card title="Python SDK" icon="python" href="/integrations/python">
+    Use the Portkey Python SDK
+  </Card>
+  <Card title="JavaScript SDK" icon="js" href="/integrations/javascript">
+    Use the Portkey JS/TS SDK
+  </Card>
+  <Card title="OpenAI SDKs" icon="code" href="/integrations/openai-sdk">
+    Use native OpenAI SDKs
+  </Card>
+  <Card title="LangChain" icon="link" href="/integrations/langchain">
+    Integrate with LangChain
+  </Card>
+  <Card title="LlamaIndex" icon="book" href="/integrations/llamaindex">
+    Integrate with LlamaIndex
+  </Card>
+  <Card title="REST API" icon="terminal" href="/integrations/rest-api">
+    Use any HTTP client
+  </Card>
+</CardGroup>
+
+## What's Next?
+
+You're now ready to explore more advanced features:
 
 <CardGroup cols={2}>
+  <Card title="Explore Config Options" icon="gear" href="/concepts/configs">
+    Learn about all available config options for routing and guardrails
+  </Card>
+  <Card title="Supported Providers" icon="server" href="/providers/supported-providers">
+    See the full list of 250+ supported LLMs
+  </Card>
+  <Card title="Production Deployment" icon="cloud" href="/deployment/overview">
+    Deploy to production with Docker, Kubernetes, or cloud providers
+  </Card>
+  <Card title="Advanced Features" icon="wand-magic-sparkles" href="/features/fallbacks">
+    Explore caching, streaming, multi-modal, and more
+  </Card>
+</CardGroup>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+## Need Help?
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+<CardGroup cols={2}>
+  <Card title="Join Discord" icon="discord" href="https://discord.gg/portkey">
+    Get help from the community
+  </Card>
+  <Card title="View Examples" icon="book-open" href="https://github.com/Portkey-AI/gateway/tree/main/cookbook">
+    Browse cookbook examples
+  </Card>
 </CardGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  **Enterprise Users**: Looking for advanced security, governance, and compliance features? Check out the [enterprise version](/deployment/enterprise).
 </Note>

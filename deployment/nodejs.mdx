@@ -1,0 +1,365 @@
+---
+title: Node.js Deployment
+description: Deploy Portkey AI Gateway as a standalone Node.js server
+---
+
+The Portkey AI Gateway can be deployed as a standalone Node.js server, giving you full control over your hosting environment.
+
+## Quick Start
+
+The fastest way to run the gateway locally:
+
+<CodeGroup>
+```bash npm
+npx @portkey-ai/gateway
+```
+
+```bash bun
+bunx @portkey-ai/gateway
+```
+</CodeGroup>
+
+The gateway will start on `http://localhost:8787`.
+
+## From Source Deployment
+
+For production deployments, build and run from source:
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone the Portkey AI Gateway repository:
+    ```bash
+    git clone https://github.com/portkey-ai/gateway
+    cd gateway
+    ```
+  </Step>
+  
+  <Step title="Install dependencies">
+    Install the required npm packages:
+    ```bash
+    npm install
+    ```
+    
+    Or with bun for faster installation:
+    ```bash
+    bun install
+    ```
+  </Step>
+  
+  <Step title="Build the project">
+    Build the production bundle:
+    ```bash
+    npm run build
+    ```
+    
+    This creates optimized files in the `build/` directory.
+  </Step>
+  
+  <Step title="Start the server">
+    Run the production server:
+    ```bash
+    node build/start-server.js
+    ```
+    
+    Or use the npm script:
+    ```bash
+    npm run start:node
+    ```
+  </Step>
+</Steps>
+
+## Development Mode
+
+For development and testing, use the development server:
+
+```bash
+npm run dev:node
+```
+
+This starts the server with hot-reloading using `tsx`.
+
+## Configuration
+
+### Environment Variables
+
+Configure the gateway using environment variables:
+
+```bash
+LOG_LEVEL=info \
+NODE_ENV=production \
+PORT=8787 \
+node build/start-server.js
+```
+
+### Configuration File
+
+Create a `conf.json` file for advanced configuration:
+
+```json conf.json
+{
+  "port": 8787,
+  "logLevel": "info",
+  "cors": {
+    "enabled": true,
+    "origins": ["*"]
+  }
+}
+```
+
+Place this file in the project root directory.
+
+## Process Management
+
+### Using PM2
+
+PM2 is a production process manager for Node.js applications.
+
+<Steps>
+  <Step title="Install PM2">
+    ```bash
+    npm install -g pm2
+    ```
+  </Step>
+  
+  <Step title="Start with PM2">
+    ```bash
+    pm2 start build/start-server.js --name portkey-gateway
+    ```
+  </Step>
+  
+  <Step title="Configure auto-restart">
+    Save the process list and configure startup:
+    ```bash
+    pm2 save
+    pm2 startup
+    ```
+  </Step>
+</Steps>
+
+#### PM2 Ecosystem File
+
+Create an `ecosystem.config.js` file for advanced PM2 configuration:
+
+```javascript ecosystem.config.js
+module.exports = {
+  apps: [{
+    name: 'portkey-gateway',
+    script: './build/start-server.js',
+    instances: 'max',
+    exec_mode: 'cluster',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 8787
+    },
+    error_file: './logs/error.log',
+    out_file: './logs/output.log',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    merge_logs: true,
+    max_memory_restart: '1G'
+  }]
+}
+```
+
+Start with the ecosystem file:
+
+```bash
+pm2 start ecosystem.config.js
+```
+
+### PM2 Management Commands
+
+```bash
+# View status
+pm2 status
+
+# View logs
+pm2 logs portkey-gateway
+
+# Restart
+pm2 restart portkey-gateway
+
+# Stop
+pm2 stop portkey-gateway
+
+# Delete
+pm2 delete portkey-gateway
+
+# Monitor
+pm2 monit
+```
+
+## Systemd Service
+
+For Linux systems, create a systemd service:
+
+### Create Service File
+
+Create `/etc/systemd/system/portkey-gateway.service`:
+
+```ini portkey-gateway.service
+[Unit]
+Description=Portkey AI Gateway
+After=network.target
+
+[Service]
+Type=simple
+User=nodejs
+WorkingDirectory=/opt/portkey-gateway
+ExecStart=/usr/bin/node build/start-server.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=portkey-gateway
+Environment=NODE_ENV=production
+Environment=PORT=8787
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Manage the Service
+
+<Steps>
+  <Step title="Reload systemd">
+    ```bash
+    sudo systemctl daemon-reload
+    ```
+  </Step>
+  
+  <Step title="Enable on boot">
+    ```bash
+    sudo systemctl enable portkey-gateway
+    ```
+  </Step>
+  
+  <Step title="Start the service">
+    ```bash
+    sudo systemctl start portkey-gateway
+    ```
+  </Step>
+  
+  <Step title="Check status">
+    ```bash
+    sudo systemctl status portkey-gateway
+    ```
+  </Step>
+</Steps>
+
+## Reverse Proxy Setup
+
+### Nginx
+
+Configure Nginx as a reverse proxy:
+
+```nginx /etc/nginx/sites-available/portkey-gateway
+server {
+    listen 80;
+    server_name gateway.yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:8787;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+    }
+}
+```
+
+Enable the site:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/portkey-gateway /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### Add SSL with Certbot
+
+```bash
+sudo certbot --nginx -d gateway.yourdomain.com
+```
+
+## Performance Tuning
+
+### Node.js Options
+
+Optimize Node.js for production:
+
+```bash
+node --max-old-space-size=4096 \
+     --max-http-header-size=16384 \
+     build/start-server.js
+```
+
+### Clustering
+
+Utilize multiple CPU cores by running multiple instances behind a load balancer, or use PM2's cluster mode as shown above.
+
+## Monitoring
+
+### View Logs
+
+```bash
+# With PM2
+pm2 logs portkey-gateway
+
+# With systemd
+sudo journalctl -u portkey-gateway -f
+
+# Direct logs
+tail -f logs/*.log
+```
+
+### Health Check
+
+Check if the gateway is running:
+
+```bash
+curl http://localhost:8787/health
+```
+
+## Troubleshooting
+
+### Port Already in Use
+
+If port 8787 is already in use, change it:
+
+```bash
+PORT=8788 node build/start-server.js
+```
+
+### Memory Issues
+
+Increase Node.js heap size:
+
+```bash
+node --max-old-space-size=8192 build/start-server.js
+```
+
+### Permission Errors
+
+Ensure the user has proper permissions:
+
+```bash
+sudo chown -R nodejs:nodejs /opt/portkey-gateway
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Docker Deployment" icon="docker" href="/deployment/docker">
+    Containerize your Node.js deployment
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Configure the gateway for production
+  </Card>
+</CardGroup>

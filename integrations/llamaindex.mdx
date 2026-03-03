@@ -1,0 +1,476 @@
+---
+title: "LlamaIndex Integration"
+description: "Use Portkey AI Gateway with LlamaIndex for production-ready RAG applications"
+---
+
+Integrate Portkey with LlamaIndex to build robust RAG (Retrieval-Augmented Generation) applications with access to 250+ LLMs and production-grade reliability.
+
+## Overview
+
+Portkey enhances LlamaIndex applications with:
+
+- **Multi-Provider Support**: Route to 250+ LLMs seamlessly
+- **Reliability**: Automatic fallbacks and retries
+- **Performance**: Smart caching for embeddings and completions
+- **Observability**: Full logging and tracing for RAG pipelines
+- **Cost Optimization**: Track and reduce token usage
+
+## Installation
+
+```bash
+pip install portkey-ai llama-index
+```
+
+## Quick Start
+
+LlamaIndex works with Portkey through the OpenAI-compatible interface:
+
+<Steps>
+  <Step title="Import and Configure">
+    ```python
+    from llama_index.llms.openai import OpenAI
+    from llama_index.embeddings.openai import OpenAIEmbedding
+    from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+    
+    # Create Portkey headers
+    portkey_headers = createHeaders(
+        api_key="your-portkey-api-key",
+        provider="openai"
+    )
+    ```
+  </Step>
+  
+  <Step title="Initialize LLM">
+    ```python
+    llm = OpenAI(
+        model="gpt-4",
+        api_key="your-openai-api-key",
+        api_base=PORTKEY_GATEWAY_URL,
+        default_headers=portkey_headers
+    )
+    ```
+  </Step>
+  
+  <Step title="Use in Your Application">
+    ```python
+    response = llm.complete("Explain quantum computing")
+    print(response)
+    ```
+  </Step>
+</Steps>
+
+## Complete RAG Setup
+
+Build a complete RAG application with Portkey:
+
+```python
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Configure Portkey
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={"application": "rag-pipeline"}
+)
+
+# Configure LLM
+llm = OpenAI(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    api_base=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Configure embeddings
+embed_model = OpenAIEmbedding(
+    model="text-embedding-3-small",
+    api_key="your-openai-api-key",
+    api_base=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Set global settings
+Settings.llm = llm
+Settings.embed_model = embed_model
+
+# Load documents
+documents = SimpleDirectoryReader("./data").load_data()
+
+# Create index
+index = VectorStoreIndex.from_documents(documents)
+
+# Query
+query_engine = index.as_query_engine()
+response = query_engine.query("What are the main topics in the documents?")
+print(response)
+```
+
+## Using Different Providers
+
+Switch between providers easily:
+
+<CodeGroup>
+```python Anthropic Claude
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="anthropic"
+)
+
+llm = OpenAI(
+    model="claude-3-opus-20240229",
+    api_key="your-anthropic-api-key",
+    api_base=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+```python Google Gemini
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="google"
+)
+
+llm = OpenAI(
+    model="gemini-1.5-pro",
+    api_key="your-google-api-key",
+    api_base=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+```python Azure OpenAI
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="azure-openai"
+)
+
+llm = OpenAI(
+    model="gpt-4",
+    api_key="your-azure-api-key",
+    api_base=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+</CodeGroup>
+
+## Advanced Routing
+
+### Fallback Configuration
+
+Automatically fallback to backup providers:
+
+```python
+config = {
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"virtual_key": "openai-virtual-key"},
+        {"virtual_key": "anthropic-virtual-key"},
+        {"virtual_key": "together-virtual-key"}
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+
+llm = OpenAI(
+    model="gpt-4",
+    api_key="X",  # Virtual keys in config
+    api_base=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+### Load Balancing
+
+Distribute traffic across multiple models:
+
+```python
+config = {
+    "strategy": {"mode": "loadbalance"},
+    "targets": [
+        {
+            "virtual_key": "openai-key-1",
+            "weight": 0.7
+        },
+        {
+            "virtual_key": "openai-key-2",
+            "weight": 0.3
+        }
+    ]
+}
+```
+
+## Caching for Embeddings
+
+Cache embeddings to reduce costs and improve performance:
+
+```python
+config = {
+    "cache": {
+        "mode": "simple",  # or "semantic"
+        "max_age": 86400  # 24 hours
+    }
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    config=config
+)
+
+embed_model = OpenAIEmbedding(
+    model="text-embedding-3-small",
+    api_key="your-openai-api-key",
+    api_base=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+## Chat Engine with Portkey
+
+Build conversational applications:
+
+```python
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.llms.openai import OpenAI
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Configure Portkey
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={
+        "user_id": "user_123",
+        "session_id": "session_456"
+    }
+)
+
+llm = OpenAI(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    api_base=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+Settings.llm = llm
+
+# Load documents and create index
+documents = SimpleDirectoryReader("./data").load_data()
+index = VectorStoreIndex.from_documents(documents)
+
+# Create chat engine with memory
+memory = ChatMemoryBuffer.from_defaults(token_limit=3000)
+chat_engine = index.as_chat_engine(
+    chat_mode="condense_plus_context",
+    memory=memory,
+    verbose=True
+)
+
+# Chat
+response = chat_engine.chat("What is this document about?")
+print(response)
+
+response = chat_engine.chat("Can you elaborate on that?")
+print(response)
+```
+
+## Streaming Responses
+
+Enable streaming for real-time responses:
+
+```python
+llm = OpenAI(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    api_base=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers,
+    streaming=True
+)
+
+response = llm.stream_complete("Tell me a long story")
+for chunk in response:
+    print(chunk.delta, end="", flush=True)
+```
+
+## Multi-Document Agents
+
+Build agents that reason over multiple documents:
+
+```python
+from llama_index.core.agent import ReActAgent
+from llama_index.core.tools import QueryEngineTool, ToolMetadata
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+from llama_index.llms.openai import OpenAI
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Configure Portkey
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai"
+)
+
+llm = OpenAI(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    api_base=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+
+# Load multiple document sets
+research_docs = SimpleDirectoryReader("./research").load_data()
+reports_docs = SimpleDirectoryReader("./reports").load_data()
+
+# Create indices
+research_index = VectorStoreIndex.from_documents(research_docs)
+reports_index = VectorStoreIndex.from_documents(reports_docs)
+
+# Create query engines
+research_engine = research_index.as_query_engine()
+reports_engine = reports_index.as_query_engine()
+
+# Create tools
+tools = [
+    QueryEngineTool(
+        query_engine=research_engine,
+        metadata=ToolMetadata(
+            name="research_papers",
+            description="Contains research papers on AI"
+        )
+    ),
+    QueryEngineTool(
+        query_engine=reports_engine,
+        metadata=ToolMetadata(
+            name="company_reports",
+            description="Contains company quarterly reports"
+        )
+    )
+]
+
+# Create agent
+agent = ReActAgent.from_tools(tools, llm=llm, verbose=True)
+
+# Query across documents
+response = agent.chat("Compare the AI trends in research papers vs company reports")
+print(response)
+```
+
+## Observability and Monitoring
+
+Track your RAG pipeline performance:
+
+```python
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+# Add detailed metadata
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    provider="openai",
+    metadata={
+        "environment": "production",
+        "user_id": "user_123",
+        "query_type": "semantic_search",
+        "document_count": 100
+    },
+    trace_id="rag-pipeline-001"
+)
+
+llm = OpenAI(
+    model="gpt-4",
+    api_key="your-openai-api-key",
+    api_base=PORTKEY_GATEWAY_URL,
+    default_headers=portkey_headers
+)
+```
+
+View detailed metrics in the Portkey dashboard:
+- Query latency
+- Token usage per query
+- Cache hit rates
+- Error rates
+- Cost per query
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Cache Embeddings">
+    Enable caching for embeddings to avoid recomputing them for the same content.
+    ```python
+    config = {"cache": {"mode": "simple", "max_age": 86400}}
+    ```
+  </Accordion>
+  
+  <Accordion title="Use Fallbacks for Production">
+    Always configure fallback providers for your RAG pipeline:
+    ```python
+    config = {
+        "strategy": {"mode": "fallback"},
+        "targets": [{"virtual_key": "primary"}, {"virtual_key": "backup"}]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Track Query Performance">
+    Add metadata to track which queries are slow or expensive:
+    ```python
+    metadata = {"query_type": "complex_rag", "doc_count": 1000}
+    ```
+  </Accordion>
+  
+  <Accordion title="Optimize Chunk Sizes">
+    Monitor token usage to optimize your chunking strategy and reduce costs.
+  </Accordion>
+</AccordionGroup>
+
+## Error Handling
+
+Implement robust error handling:
+
+```python
+from llama_index.llms.openai import OpenAI
+from portkey_ai import createHeaders, PORTKEY_GATEWAY_URL
+
+config = {
+    "retry": {
+        "attempts": 3,
+        "on_status_codes": [429, 500, 502, 503]
+    },
+    "strategy": {"mode": "fallback"},
+    "targets": [
+        {"virtual_key": "openai-key"},
+        {"virtual_key": "anthropic-key"}
+    ]
+}
+
+portkey_headers = createHeaders(
+    api_key="your-portkey-api-key",
+    config=config
+)
+
+try:
+    llm = OpenAI(
+        model="gpt-4",
+        api_key="your-openai-api-key",
+        api_base=PORTKEY_GATEWAY_URL,
+        default_headers=portkey_headers
+    )
+    response = llm.complete("Your query")
+except Exception as e:
+    print(f"Error: {e}")
+```
+
+## Resources
+
+- [LlamaIndex Documentation](https://docs.llamaindex.ai/)
+- [Portkey Gateway Configs](/concepts/configs)
+- [RAG Best Practices](https://docs.llamaindex.ai/en/stable/optimizing/production_rag/)
+- [Example Notebooks](https://github.com/Portkey-AI/gateway/tree/main/cookbook)
+
+<Note>
+  Need help? Join our [Discord community](https://discord.gg/portkey) for support.
+</Note>

@@ -1,0 +1,518 @@
+---
+title: "Streaming Responses"
+description: "Stream responses from LLMs in real-time for better user experience"
+---
+
+## Overview
+
+Streaming allows you to receive LLM responses incrementally as they're generated, rather than waiting for the complete response. This significantly improves perceived latency and enables real-time user interfaces like ChatGPT.
+
+The Gateway supports streaming for all compatible providers with automatic format transformation to OpenAI's Server-Sent Events (SSE) format.
+
+## How It Works
+
+When streaming is enabled:
+
+1. Request is sent to the provider with `stream: true`
+2. Provider begins generating the response
+3. Gateway receives chunks as they're generated
+4. Chunks are transformed to OpenAI format (if needed)
+5. Transformed chunks are streamed to your application
+6. Final chunk signals completion
+
+<Info>
+The Gateway handles different streaming formats (SSE, JSON lines, AWS event streams) and normalizes them to OpenAI's format, making it easy to switch providers.
+</Info>
+
+## Configuration
+
+### Basic Streaming
+
+Simply set `stream: true` in your request:
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Tell me a story"}],
+    stream=True
+)
+```
+
+No special Gateway configuration needed.
+
+### Streaming with Configs
+
+Combine streaming with other features:
+
+```json
+{
+  "retry": { "attempts": 2 },
+  "request_timeout": 60000,
+  "strategy": { "mode": "fallback" },
+  "targets": [
+    {"provider": "openai", "api_key": "sk-***"},
+    {"provider": "anthropic", "api_key": "sk-ant-***"}
+  ]
+}
+```
+
+<Note>
+Retries and fallbacks work seamlessly with streaming. If a stream fails mid-way, the Gateway can retry or fallback automatically.
+</Note>
+
+## Usage Examples
+
+<CodeGroup>
+
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="PORTKEY_API_KEY",
+    provider="openai",
+    Authorization="sk-***"
+)
+
+# Streaming chat completion
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Write a poem about AI"}],
+    stream=True
+)
+
+# Process chunks as they arrive
+for chunk in response:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+```
+
+```javascript JavaScript
+import { Portkey } from 'portkey-ai';
+
+const client = new Portkey({
+  apiKey: 'PORTKEY_API_KEY',
+  provider: 'openai',
+  Authorization: 'sk-***'
+});
+
+const stream = await client.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'Write a poem about AI' }],
+  stream: true
+});
+
+for await (const chunk of stream) {
+  if (chunk.choices[0]?.delta?.content) {
+    process.stdout.write(chunk.choices[0].delta.content);
+  }
+}
+```
+
+```bash cURL
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-api-key: $PORTKEY_API_KEY" \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Write a poem"}],
+    "stream": true
+  }'
+```
+
+</CodeGroup>
+
+## Stream Format
+
+### OpenAI Format (Default)
+
+The Gateway outputs streams in OpenAI's SSE format:
+
+```
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4o","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4o","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4o","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]
+```
+
+### Chunk Structure
+
+```typescript
+interface StreamChunk {
+  id: string;
+  object: "chat.completion.chunk";
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    delta: {
+      role?: string;
+      content?: string;
+      function_call?: {
+        name?: string;
+        arguments?: string;
+      };
+    };
+    finish_reason: string | null;
+  }>;
+}
+```
+
+## Provider Support
+
+### Streaming Providers
+
+All major providers support streaming:
+
+| Provider | Streaming | Native Format | Gateway Transforms |
+|----------|-----------|---------------|--------------------|
+| OpenAI | ✅ | SSE | No |
+| Anthropic | ✅ | SSE | Yes |
+| Azure OpenAI | ✅ | SSE | No |
+| Google Gemini | ✅ | JSON | Yes |
+| Cohere | ✅ | JSON | Yes |
+| AWS Bedrock | ✅ | Event Stream | Yes |
+| Groq | ✅ | SSE | No |
+| Together AI | ✅ | SSE | Yes |
+| Mistral | ✅ | SSE | Yes |
+
+<Info>
+The Gateway automatically transforms all streaming formats to OpenAI-compatible SSE, so you can switch providers without changing client code.
+</Info>
+
+## Implementation Details
+
+### Stream Processing
+
+From `src/handlers/streamHandler.ts`:
+
+```typescript
+export async function* readStream(
+  reader: ReadableStreamDefaultReader,
+  splitPattern: SplitPatternType,
+  transformFunction: Function | undefined,
+  isSleepTimeRequired: boolean,
+  fallbackChunkId: string,
+  strictOpenAiCompliance: boolean,
+  gatewayRequest: Params
+) {
+  let buffer = '';
+  const decoder = new TextDecoder();
+  const streamState = {};
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    while (buffer.split(splitPattern).length > 1) {
+      const parts = buffer.split(splitPattern);
+      const lastPart = parts.pop() ?? '';
+      
+      for (const part of parts) {
+        if (part.length > 0) {
+          if (transformFunction) {
+            const transformedChunk = transformFunction(
+              part,
+              fallbackChunkId,
+              streamState,
+              strictOpenAiCompliance,
+              gatewayRequest
+            );
+            if (transformedChunk !== undefined) {
+              yield transformedChunk;
+            }
+          } else {
+            yield part + splitPattern;
+          }
+        }
+      }
+
+      buffer = lastPart;
+    }
+  }
+}
+```
+
+### Provider-Specific Handling
+
+#### AWS Bedrock Event Streams
+
+Bedrock uses binary event streams that require special parsing:
+
+```typescript
+export async function* readAWSStream(
+  reader: ReadableStreamDefaultReader,
+  transformFunction: Function | undefined,
+  fallbackChunkId: string,
+  strictOpenAiCompliance: boolean,
+  gatewayRequest: Params
+) {
+  let buffer = new Uint8Array();
+  let expectedLength = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer = concatenateUint8Arrays(buffer, value);
+
+    while (buffer.length >= expectedLength && buffer.length !== 0) {
+      const data = buffer.subarray(0, expectedLength);
+      buffer = buffer.subarray(expectedLength);
+      
+      const payload = getPayloadFromAWSChunk(data);
+      
+      if (transformFunction) {
+        const transformedChunk = transformFunction(
+          payload,
+          fallbackChunkId,
+          streamState,
+          strictOpenAiCompliance,
+          gatewayRequest
+        );
+        yield transformedChunk;
+      }
+    }
+  }
+}
+```
+
+## Advanced Streaming Patterns
+
+### Function Calling with Streaming
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "What's the weather?"}],
+    tools=[{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    }],
+    stream=True
+)
+
+for chunk in response:
+    delta = chunk.choices[0].delta
+    
+    # Check for function call
+    if delta.function_call:
+        print(f"Function: {delta.function_call.name}")
+        print(f"Args: {delta.function_call.arguments}")
+    
+    # Check for content
+    if delta.content:
+        print(delta.content, end="")
+```
+
+### Streaming with Metadata
+
+```python
+client = Portkey(
+    api_key="PORTKEY_API_KEY",
+    provider="openai",
+    Authorization="sk-***",
+    metadata={
+        "user_id": "user_123",
+        "session_id": "sess_456"
+    }
+)
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Hello"}],
+    stream=True
+)
+
+for chunk in response:
+    # Metadata is logged for each chunk
+    print(chunk.choices[0].delta.content, end="")
+```
+
+### Multi-Provider Streaming with Fallback
+
+```python
+client = Portkey(
+    api_key="PORTKEY_API_KEY",
+    config={
+        "strategy": {"mode": "fallback"},
+        "targets": [
+            {"provider": "openai", "api_key": "sk-***"},
+            {"provider": "anthropic", "api_key": "sk-ant-***"},
+            {"provider": "google", "api_key": "***"}
+        ]
+    }
+)
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Tell me a story"}],
+    stream=True
+)
+
+for chunk in response:
+    # If OpenAI fails, automatically falls back to Anthropic or Google
+    # Format remains consistent across all providers
+    print(chunk.choices[0].delta.content, end="")
+```
+
+## Error Handling
+
+### Handling Stream Errors
+
+```python
+try:
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello"}],
+        stream=True
+    )
+    
+    for chunk in response:
+        if chunk.choices[0].delta.content:
+            print(chunk.choices[0].delta.content, end="")
+            
+except Exception as e:
+    print(f"Stream error: {e}")
+    # Handle error (retry, fallback, etc.)
+```
+
+### Mid-Stream Failures
+
+The Gateway handles mid-stream failures:
+
+```json
+{
+  "retry": { "attempts": 2 },
+  "strategy": { "mode": "fallback" },
+  "targets": [
+    {"provider": "openai", "api_key": "sk-***"},
+    {"provider": "anthropic", "api_key": "sk-ant-***"}
+  ]
+}
+```
+
+If a stream fails:
+1. Gateway attempts retry with same provider
+2. Falls back to next provider if retry fails
+3. New stream starts from beginning
+
+<Warning>
+When a stream fails mid-way and falls back, the response starts over from the beginning. Your application should handle partial responses appropriately.
+</Warning>
+
+## Performance Optimization
+
+### Latency Optimization
+
+```python
+# Azure OpenAI has slight delays between chunks
+client = Portkey(
+    api_key="PORTKEY_API_KEY",
+    provider="azure-openai",
+    # Gateway adds 1ms sleep between chunks for Azure
+    custom_host="https://your-resource.openai.azure.com"
+)
+```
+
+The Gateway automatically handles provider-specific timing requirements.
+
+### Chunk Buffering
+
+For better UI rendering, buffer small chunks:
+
+```javascript
+let buffer = '';
+const BUFFER_SIZE = 10;
+
+for await (const chunk of stream) {
+  const content = chunk.choices[0]?.delta?.content;
+  if (content) {
+    buffer += content;
+    
+    if (buffer.length >= BUFFER_SIZE) {
+      updateUI(buffer);
+      buffer = '';
+    }
+  }
+}
+
+if (buffer) {
+  updateUI(buffer);  // Flush remaining
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Handle Stream Completion">
+Always check for `finish_reason` to detect stream completion:
+```python
+if chunk.choices[0].finish_reason == "stop":
+    print("\nStream completed successfully")
+```
+</Accordion>
+
+<Accordion title="Set Appropriate Timeouts">
+Streaming responses take longer. Set higher timeouts:
+```json
+{"request_timeout": 60000}
+```
+</Accordion>
+
+<Accordion title="Implement Retry Logic">
+Streams can fail mid-way. Implement client-side retry:
+```python
+max_retries = 3
+for attempt in range(max_retries):
+    try:
+        for chunk in stream:
+            process(chunk)
+        break
+    except Exception as e:
+        if attempt == max_retries - 1:
+            raise
+```
+</Accordion>
+
+<Accordion title="Buffer for UI Rendering">
+Buffer small chunks before updating UI to reduce render overhead and improve perceived performance.
+</Accordion>
+
+<Accordion title="Monitor Stream Performance">
+Track metrics like time-to-first-chunk and total stream duration to optimize user experience.
+</Accordion>
+
+</AccordionGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+
+<Card title="Realtime APIs" icon="satellite-dish" href="/features/realtime">
+  WebSocket-based realtime APIs
+</Card>
+
+<Card title="Timeouts" icon="clock" href="/features/timeouts">
+  Configure streaming timeouts
+</Card>
+
+<Card title="Fallbacks" icon="route" href="/features/fallbacks">
+  Fallback on stream failures
+</Card>
+
+<Card title="Retries" icon="rotate-right" href="/features/retries">
+  Retry failed streams
+</Card>
+
+</CardGroup>

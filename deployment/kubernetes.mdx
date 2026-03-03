@@ -1,0 +1,532 @@
+---
+title: Kubernetes Deployment
+description: Deploy Portkey AI Gateway to Kubernetes clusters
+---
+
+Deploy the Portkey AI Gateway to Kubernetes for production-grade orchestration, scaling, and high availability.
+
+## Quick Deployment
+
+Deploy using the official Kubernetes manifest:
+
+<Steps>
+  <Step title="Download the manifest">
+    Download the deployment manifest from the repository:
+    ```bash
+    wget https://raw.githubusercontent.com/Portkey-AI/gateway/main/deployment.yaml
+    ```
+  </Step>
+  
+  <Step title="Apply the manifest">
+    Deploy to your Kubernetes cluster:
+    ```bash
+    kubectl apply -f deployment.yaml
+    ```
+  </Step>
+  
+  <Step title="Verify deployment">
+    Check the deployment status:
+    ```bash
+    kubectl get pods -n portkeyai
+    kubectl get svc -n portkeyai
+    ```
+  </Step>
+</Steps>
+
+## Kubernetes Manifest
+
+The complete deployment configuration:
+
+```yaml deployment.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: portkeyai
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portkeyai
+  namespace: portkeyai
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: portkeyai
+      version: v1
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: portkeyai
+        version: v1
+    spec:
+      containers:
+      - image: portkeyai/gateway
+        imagePullPolicy: IfNotPresent
+        name: portkeyai
+        ports:
+        - containerPort: 8787
+          protocol: TCP
+        resources: {}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portkeyai
+  namespace: portkeyai
+spec:
+  ports:
+  - port: 8787
+    protocol: TCP
+    targetPort: 8787
+  selector:
+    app: portkeyai
+    version: v1
+  sessionAffinity: None
+  type: NodePort
+```
+
+## Production Configuration
+
+### Resource Limits
+
+Add resource requests and limits for production:
+
+```yaml
+spec:
+  template:
+    spec:
+      containers:
+      - name: portkeyai
+        image: portkeyai/gateway
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+```
+
+### Health Checks
+
+Add liveness and readiness probes:
+
+```yaml
+spec:
+  template:
+    spec:
+      containers:
+      - name: portkeyai
+        image: portkeyai/gateway
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8787
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8787
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+```
+
+### Environment Variables
+
+Add configuration via environment variables:
+
+```yaml
+spec:
+  template:
+    spec:
+      containers:
+      - name: portkeyai
+        image: portkeyai/gateway
+        env:
+        - name: LOG_LEVEL
+          value: "info"
+        - name: NODE_ENV
+          value: "production"
+```
+
+### Secrets Management
+
+Store sensitive data in Kubernetes secrets:
+
+```bash
+# Create a secret
+kubectl create secret generic portkey-secrets \
+  --from-literal=api-key=your-api-key \
+  -n portkeyai
+```
+
+Reference in deployment:
+
+```yaml
+spec:
+  template:
+    spec:
+      containers:
+      - name: portkeyai
+        image: portkeyai/gateway
+        env:
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: portkey-secrets
+              key: api-key
+```
+
+## Scaling
+
+### Horizontal Pod Autoscaling
+
+Automatically scale based on CPU/memory:
+
+```yaml hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: portkeyai-hpa
+  namespace: portkeyai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: portkeyai
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+```
+
+Apply the HPA:
+
+```bash
+kubectl apply -f hpa.yaml
+```
+
+### Manual Scaling
+
+Scale replicas manually:
+
+```bash
+# Scale to 3 replicas
+kubectl scale deployment portkeyai -n portkeyai --replicas=3
+
+# Verify scaling
+kubectl get pods -n portkeyai
+```
+
+## Ingress Configuration
+
+### Nginx Ingress
+
+Expose the gateway via Nginx Ingress:
+
+```yaml ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portkeyai-ingress
+  namespace: portkeyai
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - gateway.yourdomain.com
+    secretName: portkeyai-tls
+  rules:
+  - host: gateway.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: portkeyai
+            port:
+              number: 8787
+```
+
+### Traefik Ingress
+
+For Traefik users:
+
+```yaml ingress-traefik.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portkeyai-ingress
+  namespace: portkeyai
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: gateway.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: portkeyai
+            port:
+              number: 8787
+```
+
+## Storage
+
+### ConfigMap for Configuration
+
+Store configuration files:
+
+```yaml configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: portkeyai-config
+  namespace: portkeyai
+data:
+  conf.json: |
+    {
+      "logLevel": "info",
+      "cors": {
+        "enabled": true,
+        "origins": ["*"]
+      }
+    }
+```
+
+Mount in deployment:
+
+```yaml
+spec:
+  template:
+    spec:
+      containers:
+      - name: portkeyai
+        image: portkeyai/gateway
+        volumeMounts:
+        - name: config
+          mountPath: /app/conf.json
+          subPath: conf.json
+      volumes:
+      - name: config
+        configMap:
+          name: portkeyai-config
+```
+
+### Persistent Storage
+
+Add persistent volume for logs:
+
+```yaml pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: portkeyai-logs
+  namespace: portkeyai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+## Monitoring
+
+### Prometheus Metrics
+
+Add Prometheus annotations:
+
+```yaml
+metadata:
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8787"
+    prometheus.io/path: "/metrics"
+```
+
+### Service Monitor
+
+For Prometheus Operator:
+
+```yaml servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: portkeyai
+  namespace: portkeyai
+spec:
+  selector:
+    matchLabels:
+      app: portkeyai
+  endpoints:
+  - port: http
+    interval: 30s
+    path: /metrics
+```
+
+## Helm Chart
+
+Create a Helm chart for easier management:
+
+### values.yaml
+
+```yaml values.yaml
+replicaCount: 2
+
+image:
+  repository: portkeyai/gateway
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8787
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: gateway.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: portkeyai-tls
+      hosts:
+        - gateway.yourdomain.com
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "250m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+```
+
+## Cluster Management
+
+### View Logs
+
+```bash
+# View logs from all pods
+kubectl logs -n portkeyai -l app=portkeyai --tail=100 -f
+
+# View logs from specific pod
+kubectl logs -n portkeyai <pod-name> -f
+```
+
+### Execute Commands
+
+```bash
+# Get a shell in a pod
+kubectl exec -it -n portkeyai <pod-name> -- /bin/sh
+
+# Run a command
+kubectl exec -n portkeyai <pod-name> -- node --version
+```
+
+### Port Forwarding
+
+Access the gateway locally:
+
+```bash
+kubectl port-forward -n portkeyai svc/portkeyai 8787:8787
+```
+
+## Updates and Rollbacks
+
+### Update Deployment
+
+```bash
+# Update image
+kubectl set image deployment/portkeyai -n portkeyai \
+  portkeyai=portkeyai/gateway:v2.0.0
+
+# Watch rollout
+kubectl rollout status deployment/portkeyai -n portkeyai
+```
+
+### Rollback
+
+```bash
+# View rollout history
+kubectl rollout history deployment/portkeyai -n portkeyai
+
+# Rollback to previous version
+kubectl rollout undo deployment/portkeyai -n portkeyai
+
+# Rollback to specific revision
+kubectl rollout undo deployment/portkeyai -n portkeyai --to-revision=2
+```
+
+## Cleanup
+
+Remove the deployment:
+
+```bash
+# Delete all resources
+kubectl delete -f deployment.yaml
+
+# Or delete namespace
+kubectl delete namespace portkeyai
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Helm Charts" icon="helm" href="https://helm.sh/">
+    Learn about Kubernetes Helm charts
+  </Card>
+  
+  <Card title="Monitoring" icon="chart-line" href="/monitoring">
+    Set up monitoring and observability
+  </Card>
+</CardGroup>

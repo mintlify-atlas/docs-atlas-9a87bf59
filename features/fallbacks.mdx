@@ -1,0 +1,308 @@
+---
+title: "Fallbacks"
+description: "Automatically fallback to backup providers when requests fail"
+---
+
+## Overview
+
+Fallbacks ensure high availability by automatically routing failed requests to backup providers. When your primary LLM provider experiences downtime or returns an error, the Gateway seamlessly switches to an alternative provider without interrupting your application.
+
+## How It Works
+
+The Gateway monitors response status codes and automatically triggers fallback logic when specified error conditions occur. Fallbacks can be:
+
+- **Provider-level**: Switch from OpenAI to Anthropic
+- **Model-level**: Switch from GPT-4 to Claude 3.5 Sonnet
+- **API key-level**: Use different API keys for the same provider
+
+<Note>
+Fallbacks work in conjunction with retries. The Gateway will exhaust retry attempts on the primary target before falling back to the next provider.
+</Note>
+
+## Configuration
+
+### Basic Fallback
+
+Fallback to a secondary provider when the primary fails:
+
+```json
+{
+  "strategy": {
+    "mode": "fallback"
+  },
+  "targets": [
+    {
+      "provider": "openai",
+      "api_key": "sk-***",
+      "override_params": {
+        "model": "gpt-4o"
+      }
+    },
+    {
+      "provider": "anthropic",
+      "api_key": "sk-ant-***",
+      "override_params": {
+        "model": "claude-3-5-sonnet-20240620"
+      }
+    }
+  ]
+}
+```
+
+### Conditional Fallback
+
+Fallback only on specific status codes:
+
+```json
+{
+  "strategy": {
+    "mode": "fallback",
+    "on_status_codes": [429, 500, 502, 503, 504]
+  },
+  "targets": [
+    {
+      "provider": "openai",
+      "api_key": "sk-***"
+    },
+    {
+      "provider": "azure-openai",
+      "api_key": "***",
+      "custom_host": "https://your-resource.openai.azure.com"
+    }
+  ]
+}
+```
+
+### Multi-Level Fallback Chain
+
+Create a cascade of fallback providers:
+
+```json
+{
+  "strategy": {
+    "mode": "fallback"
+  },
+  "targets": [
+    {
+      "provider": "openai",
+      "api_key": "sk-***",
+      "override_params": { "model": "gpt-4o" }
+    },
+    {
+      "provider": "anthropic",
+      "api_key": "sk-ant-***",
+      "override_params": { "model": "claude-3-5-sonnet-20240620" }
+    },
+    {
+      "provider": "groq",
+      "api_key": "***",
+      "override_params": { "model": "llama-3.1-70b-versatile" }
+    }
+  ]
+}
+```
+
+## Usage Examples
+
+<CodeGroup>
+
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="PORTKEY_API_KEY",
+    config={
+        "strategy": {"mode": "fallback"},
+        "targets": [
+            {
+                "provider": "openai",
+                "api_key": "sk-***",
+                "override_params": {"model": "gpt-4o"}
+            },
+            {
+                "provider": "anthropic",
+                "api_key": "sk-ant-***",
+                "override_params": {"model": "claude-3-5-sonnet-20240620"}
+            }
+        ]
+    }
+)
+
+response = client.chat.completions.create(
+    messages=[{"role": "user", "content": "Hello!"}],
+    model="gpt-4o"
+)
+```
+
+```javascript JavaScript
+import { Portkey } from 'portkey-ai';
+
+const client = new Portkey({
+  apiKey: 'PORTKEY_API_KEY',
+  config: {
+    strategy: { mode: 'fallback' },
+    targets: [
+      {
+        provider: 'openai',
+        api_key: 'sk-***',
+        override_params: { model: 'gpt-4o' }
+      },
+      {
+        provider: 'anthropic',
+        api_key: 'sk-ant-***',
+        override_params: { model: 'claude-3-5-sonnet-20240620' }
+      }
+    ]
+  }
+});
+
+const response = await client.chat.completions.create({
+  messages: [{ role: 'user', content: 'Hello!' }],
+  model: 'gpt-4o'
+});
+```
+
+```bash cURL
+curl https://api.portkey.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "x-portkey-api-key: $PORTKEY_API_KEY" \
+  -H "x-portkey-config: '{\"strategy\":{\"mode\":\"fallback\"},\"targets\":[{\"provider\":\"openai\",\"api_key\":\"sk-***\"},{\"provider\":\"anthropic\",\"api_key\":\"sk-ant-***\"}]}' " \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+</CodeGroup>
+
+## Advanced Patterns
+
+### Fallback with Retries
+
+Combine fallback with retry logic for maximum resilience:
+
+```json
+{
+  "retry": {
+    "attempts": 3,
+    "on_status_codes": [429, 500, 502, 503, 504]
+  },
+  "strategy": {
+    "mode": "fallback"
+  },
+  "targets": [
+    {
+      "provider": "openai",
+      "api_key": "sk-***"
+    },
+    {
+      "provider": "anthropic",
+      "api_key": "sk-ant-***"
+    }
+  ]
+}
+```
+
+The Gateway will:
+1. Attempt the request with OpenAI
+2. Retry up to 3 times on failure
+3. Fallback to Anthropic if all retries fail
+4. Retry up to 3 times with Anthropic
+
+### Fallback with Load Balancing
+
+Combine fallback with load balancing for horizontal scaling:
+
+```json
+{
+  "strategy": { "mode": "fallback" },
+  "targets": [
+    {
+      "strategy": { "mode": "loadbalance" },
+      "targets": [
+        {"provider": "openai", "api_key": "sk-***-1", "weight": 0.5},
+        {"provider": "openai", "api_key": "sk-***-2", "weight": 0.5}
+      ]
+    },
+    {
+      "provider": "anthropic",
+      "api_key": "sk-ant-***"
+    }
+  ]
+}
+```
+
+## Response Headers
+
+The Gateway includes headers to track fallback behavior:
+
+```
+x-portkey-last-used-option-index: 1
+x-portkey-retry-attempt-count: 2
+```
+
+- `x-portkey-last-used-option-index`: Index of the target that successfully handled the request (0-based)
+- `x-portkey-retry-attempt-count`: Number of retry attempts made
+
+## Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Choose Compatible Models">
+Ensure fallback targets use models with similar capabilities. Falling back from GPT-4 to a much weaker model may produce unexpected results.
+</Accordion>
+
+<Accordion title="Monitor Fallback Rates">
+Track how often fallbacks occur to identify reliability issues with your primary provider. Use the Gateway Console to monitor fallback patterns.
+</Accordion>
+
+<Accordion title="Test Your Fallback Chain">
+Regularly test your fallback configuration to ensure it behaves as expected under failure conditions.
+</Accordion>
+
+<Accordion title="Consider Cost Implications">
+Fallback providers may have different pricing. Monitor your costs when fallbacks are triggered frequently.
+</Accordion>
+
+</AccordionGroup>
+
+<Warning>
+When using fallback between different providers (e.g., OpenAI to Anthropic), be aware that:
+- Response formats may differ slightly
+- Model-specific features may not be available
+- Token counting may vary between providers
+</Warning>
+
+## Supported Status Codes
+
+By default, fallbacks trigger on:
+
+- `429` - Rate limit exceeded
+- `500` - Internal server error
+- `502` - Bad gateway
+- `503` - Service unavailable
+- `504` - Gateway timeout
+
+Customize using the `on_status_codes` parameter in your config.
+
+## Related Features
+
+<CardGroup cols={2}>
+
+<Card title="Retries" icon="rotate-right" href="/features/retries">
+  Automatically retry failed requests with exponential backoff
+</Card>
+
+<Card title="Load Balancing" icon="scale-balanced" href="/concepts/load-balancing">
+  Distribute requests across multiple providers
+</Card>
+
+<Card title="Timeouts" icon="clock" href="/features/timeouts">
+  Set request timeout limits
+</Card>
+
+<Card title="Configs" icon="gear" href="/concepts/configs">
+  Learn more about Gateway Configs
+</Card>
+
+</CardGroup>

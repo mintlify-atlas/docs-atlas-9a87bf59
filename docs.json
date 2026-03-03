@@ -1,122 +1,220 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Portkey AI Gateway",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#3B82F6",
+    "light": "#60A5FA",
+    "dark": "#2563EB"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/portkey-AI/gateway"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/portkey-AI/gateway",
+      "discord": "https://discord.gg/portkey",
+      "twitter": "https://twitter.com/PortkeyAI",
+      "linkedin": "https://www.linkedin.com/company/portkey-ai"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "installation"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/routing",
+              "concepts/configs",
+              "concepts/providers",
+              "concepts/guardrails",
+              "concepts/caching",
+              "concepts/load-balancing"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Features",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "features/fallbacks",
+              "features/retries",
+              "features/timeouts",
+              "features/multi-modal",
+              "features/streaming",
+              "features/realtime"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "MCP Gateway",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "mcp/overview",
+              "mcp/quickstart",
+              "mcp/authentication",
+              "mcp/access-control"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/overview",
+              "deployment/docker",
+              "deployment/nodejs",
+              "deployment/cloudflare",
+              "deployment/kubernetes",
+              "deployment/enterprise"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
-              "api-reference/introduction"
+              "api/overview",
+              "api/authentication",
+              "api/errors"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Chat",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/chat/completions",
+              "api/chat/streaming"
+            ]
+          },
+          {
+            "group": "Completions",
+            "pages": [
+              "api/completions/create"
+            ]
+          },
+          {
+            "group": "Embeddings",
+            "pages": [
+              "api/embeddings/create"
+            ]
+          },
+          {
+            "group": "Images",
+            "pages": [
+              "api/images/generations",
+              "api/images/edits"
+            ]
+          },
+          {
+            "group": "Audio",
+            "pages": [
+              "api/audio/speech",
+              "api/audio/transcriptions",
+              "api/audio/translations"
+            ]
+          },
+          {
+            "group": "Files",
+            "pages": [
+              "api/files/upload",
+              "api/files/list",
+              "api/files/retrieve",
+              "api/files/delete"
+            ]
+          },
+          {
+            "group": "Batches",
+            "pages": [
+              "api/batches/create",
+              "api/batches/retrieve",
+              "api/batches/cancel",
+              "api/batches/list"
+            ]
+          },
+          {
+            "group": "Fine-tuning",
+            "pages": [
+              "api/fine-tuning/jobs"
+            ]
+          },
+          {
+            "group": "Realtime",
+            "pages": [
+              "api/realtime/websocket"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Providers",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "providers/overview",
+              "providers/supported-providers"
+            ]
+          },
+          {
+            "group": "Major Providers",
+            "pages": [
+              "providers/openai",
+              "providers/anthropic",
+              "providers/azure-openai",
+              "providers/google-gemini",
+              "providers/bedrock",
+              "providers/cohere",
+              "providers/mistral"
+            ]
+          },
+          {
+            "group": "Specialized Providers",
+            "pages": [
+              "providers/together-ai",
+              "providers/anyscale",
+              "providers/perplexity",
+              "providers/groq",
+              "providers/deepinfra",
+              "providers/ollama"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Integrations",
+        "groups": [
+          {
+            "group": "Agent Frameworks",
+            "pages": [
+              "integrations/overview",
+              "integrations/langchain",
+              "integrations/llamaindex",
+              "integrations/autogen",
+              "integrations/crewai",
+              "integrations/phidata"
+            ]
+          },
+          {
+            "group": "SDKs",
+            "pages": [
+              "integrations/python",
+              "integrations/javascript",
+              "integrations/openai-sdk",
+              "integrations/rest-api"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }
