@@ -1,0 +1,206 @@
+---
+title: Count Message Tokens
+description: Count the number of tokens in a message for Anthropic models
+---
+
+## POST /v1/messages/count_tokens
+
+Count the number of tokens that would be used by a messages request. This is useful for estimating costs and ensuring you stay within model token limits.
+
+<Note>
+  This endpoint is specific to Anthropic's API format. For OpenAI-format requests, token counting is typically done client-side or through the provider's tokenizer.
+</Note>
+
+## Authentication
+
+Requires provider authentication headers:
+
+```bash
+x-portkey-provider: anthropic
+Authorization: Bearer YOUR_ANTHROPIC_API_KEY
+```
+
+## Request
+
+### Headers
+
+<ParamField header="x-portkey-provider" type="string" required>
+  Must be set to `anthropic`
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for Anthropic API
+</ParamField>
+
+<ParamField header="anthropic-version" type="string">
+  API version (e.g., `2023-06-01`)
+</ParamField>
+
+### Body Parameters
+
+<ParamField body="model" type="string" required>
+  The model to count tokens for (e.g., `claude-3-5-sonnet-20241022`)
+</ParamField>
+
+<ParamField body="messages" type="array" required>
+  Array of message objects in Anthropic format
+  
+  <Expandable title="message object">
+    <ParamField body="role" type="string" required>
+      Either `user` or `assistant`
+    </ParamField>
+    
+    <ParamField body="content" type="string | array" required>
+      Message content (text or array of content blocks)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="system" type="string">
+  System prompt (optional)
+</ParamField>
+
+<ParamField body="tools" type="array">
+  Array of tool definitions (if using tool calling)
+</ParamField>
+
+## Response
+
+<ResponseField name="input_tokens" type="integer">
+  Number of tokens in the input (messages + system prompt + tools)
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl https://localhost:8787/v1/messages/count_tokens \
+  -H "x-portkey-provider: anthropic" \
+  -H "Authorization: Bearer $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-3-5-sonnet-20241022",
+    "system": "You are a helpful assistant.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello! How are you today?"
+      }
+    ]
+  }'
+```
+
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    provider="anthropic",
+    Authorization="sk-ant-***"
+)
+
+token_count = client.messages.count_tokens(
+    model="claude-3-5-sonnet-20241022",
+    system="You are a helpful assistant.",
+    messages=[
+        {
+            "role": "user",
+            "content": "Hello! How are you today?"
+        }
+    ]
+)
+
+print(f"Input tokens: {token_count.input_tokens}")
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    provider: "anthropic",
+    Authorization: "sk-ant-***"
+});
+
+const tokenCount = await client.messages.countTokens({
+    model: "claude-3-5-sonnet-20241022",
+    system: "You are a helpful assistant.",
+    messages: [
+        {
+            role: "user",
+            content: "Hello! How are you today?"
+        }
+    ]
+});
+
+console.log(`Input tokens: ${tokenCount.input_tokens}`);
+```
+
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "input_tokens": 28
+}
+```
+
+## Use Cases
+
+<AccordionGroup>
+  <Accordion title="Cost Estimation">
+    Calculate the cost of a request before sending it by counting tokens and multiplying by the model's per-token price.
+  </Accordion>
+  
+  <Accordion title="Context Window Management">
+    Ensure your messages fit within the model's context window (e.g., 200K tokens for Claude 3.5 Sonnet).
+  </Accordion>
+  
+  <Accordion title="Prompt Optimization">
+    Compare token counts across different prompt formulations to optimize for cost and efficiency.
+  </Accordion>
+  
+  <Accordion title="Dynamic Context Trimming">
+    Determine which messages to keep or remove when approaching token limits in multi-turn conversations.
+  </Accordion>
+</AccordionGroup>
+
+## Token Counting with Tools
+
+When using tool calling, tools are included in the token count:
+
+```python
+token_count = client.messages.count_tokens(
+    model="claude-3-5-sonnet-20241022",
+    messages=[{"role": "user", "content": "What's the weather?"}],
+    tools=[
+        {
+            "name": "get_weather",
+            "description": "Get the current weather in a location",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string"}
+                },
+                "required": ["location"]
+            }
+        }
+    ]
+)
+```
+
+## Pricing
+
+Token counting requests do not consume any tokens or incur costs. Use this endpoint freely to estimate costs before making actual API calls.
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Create Message" icon="message" href="/api/chat/completions">
+    Send a messages request to Claude
+  </Card>
+  <Card title="Anthropic Provider" icon="building" href="/providers/anthropic">
+    Anthropic integration guide
+  </Card>
+</CardGroup>

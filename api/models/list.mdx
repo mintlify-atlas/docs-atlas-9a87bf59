@@ -1,0 +1,190 @@
+---
+title: List Models
+description: Retrieve a list of available models from the AI Gateway
+---
+
+## GET /v1/models
+
+Returns a list of models available through the gateway. This endpoint can return models from the control plane or pass through to the configured provider.
+
+## Authentication
+
+Requires API key authentication:
+
+```bash
+x-portkey-api-key: YOUR_API_KEY
+# OR
+Authorization: Bearer YOUR_API_KEY
+```
+
+## Request
+
+### Headers
+
+<ParamField header="x-portkey-api-key" type="string">
+  Your Portkey API key (alternative to Authorization header)
+</ParamField>
+
+<ParamField header="Authorization" type="string">
+  Bearer token authentication
+</ParamField>
+
+<ParamField header="x-portkey-provider" type="string">
+  Optional provider to list models from (e.g., `openai`, `anthropic`)
+</ParamField>
+
+<ParamField header="x-portkey-virtual-key" type="string">
+  Optional virtual key to use for authentication
+</ParamField>
+
+### Query Parameters
+
+Query parameters are passed through to the provider or control plane.
+
+## Response
+
+<ResponseField name="object" type="string">
+  The object type, always "list"
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of model objects
+  
+  <Expandable title="model object">
+    <ResponseField name="id" type="string">
+      The model identifier (e.g., "gpt-4o", "claude-3-5-sonnet-20241022")
+    </ResponseField>
+    
+    <ResponseField name="object" type="string">
+      The object type, always "model"
+    </ResponseField>
+    
+    <ResponseField name="created" type="integer">
+      Unix timestamp of when the model was created
+    </ResponseField>
+    
+    <ResponseField name="owned_by" type="string">
+      Organization that owns the model
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash cURL
+curl https://localhost:8787/v1/models \
+  -H "x-portkey-api-key: YOUR_API_KEY"
+```
+
+```bash cURL (with provider)
+curl https://localhost:8787/v1/models \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer YOUR_OPENAI_API_KEY"
+```
+
+```python Python
+from portkey_ai import Portkey
+
+client = Portkey(
+    api_key="YOUR_PORTKEY_API_KEY"
+)
+
+models = client.models.list()
+for model in models.data:
+    print(f"{model.id} - {model.owned_by}")
+```
+
+```javascript JavaScript
+import Portkey from 'portkey-ai';
+
+const client = new Portkey({
+    apiKey: "YOUR_PORTKEY_API_KEY"
+});
+
+const models = await client.models.list();
+models.data.forEach(model => {
+    console.log(`${model.id} - ${model.owned_by}`);
+});
+```
+
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "gpt-4o",
+      "object": "model",
+      "created": 1687882411,
+      "owned_by": "openai"
+    },
+    {
+      "id": "gpt-4o-mini",
+      "object": "model",
+      "created": 1687882411,
+      "owned_by": "openai"
+    },
+    {
+      "id": "claude-3-5-sonnet-20241022",
+      "object": "model",
+      "created": 1687882411,
+      "owned_by": "anthropic"
+    }
+  ]
+}
+```
+
+## Behavior
+
+The endpoint behavior depends on configuration:
+
+### With Provider Header
+
+When you specify `x-portkey-provider`, the request is forwarded to that provider's models endpoint:
+
+```bash
+curl https://localhost:8787/v1/models \
+  -H "x-portkey-provider: openai" \
+  -H "Authorization: Bearer sk-..."
+```
+
+This returns models available from OpenAI.
+
+### Without Provider Header
+
+When no provider is specified and a control plane URL is configured, the gateway returns models from the Portkey control plane, which aggregates models across all configured providers.
+
+## Use Cases
+
+<AccordionGroup>
+  <Accordion title="Model Discovery">
+    Query available models to dynamically select the best model for your use case based on capabilities, pricing, or performance.
+  </Accordion>
+  
+  <Accordion title="Provider-Specific Models">
+    List models from a specific provider to understand what's available before making requests.
+  </Accordion>
+  
+  <Accordion title="Model Validation">
+    Check if a specific model ID is available before attempting to use it.
+  </Accordion>
+</AccordionGroup>
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Chat Completions" icon="message" href="/api/chat/completions">
+    Use a model for chat completions
+  </Card>
+  <Card title="Completions" icon="code" href="/api/completions/create">
+    Use a model for completions
+  </Card>
+  <Card title="Embeddings" icon="vector-square" href="/api/embeddings/create">
+    Use a model for embeddings
+  </Card>
+</CardGroup>
