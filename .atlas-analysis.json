@@ -1,0 +1,235 @@
+{
+  "projectType": "api-service",
+  "projectName": "Portkey AI Gateway",
+  "projectDescription": "A blazing fast AI Gateway with integrated guardrails that routes to 250+ LLMs with sub-1ms latency",
+  "theme": "aspen",
+  "primaryColor": "#3B82F6",
+  "lightColor": "#60A5FA",
+  "darkColor": "#2563EB",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/routing",
+              "concepts/configs",
+              "concepts/providers",
+              "concepts/guardrails",
+              "concepts/caching",
+              "concepts/load-balancing"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/fallbacks",
+              "features/retries",
+              "features/timeouts",
+              "features/multi-modal",
+              "features/streaming",
+              "features/realtime"
+            ]
+          },
+          {
+            "group": "MCP Gateway",
+            "pages": [
+              "mcp/overview",
+              "mcp/quickstart",
+              "mcp/authentication",
+              "mcp/access-control"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/overview",
+              "deployment/docker",
+              "deployment/nodejs",
+              "deployment/cloudflare",
+              "deployment/kubernetes",
+              "deployment/enterprise"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication",
+              "api/errors"
+            ]
+          },
+          {
+            "group": "Chat",
+            "pages": [
+              "api/chat/completions",
+              "api/chat/streaming"
+            ]
+          },
+          {
+            "group": "Completions",
+            "pages": [
+              "api/completions/create"
+            ]
+          },
+          {
+            "group": "Embeddings",
+            "pages": [
+              "api/embeddings/create"
+            ]
+          },
+          {
+            "group": "Images",
+            "pages": [
+              "api/images/generations",
+              "api/images/edits"
+            ]
+          },
+          {
+            "group": "Audio",
+            "pages": [
+              "api/audio/speech",
+              "api/audio/transcriptions",
+              "api/audio/translations"
+            ]
+          },
+          {
+            "group": "Files",
+            "pages": [
+              "api/files/upload",
+              "api/files/list",
+              "api/files/retrieve",
+              "api/files/delete"
+            ]
+          },
+          {
+            "group": "Batches",
+            "pages": [
+              "api/batches/create",
+              "api/batches/retrieve",
+              "api/batches/cancel",
+              "api/batches/list"
+            ]
+          },
+          {
+            "group": "Fine-tuning",
+            "pages": [
+              "api/fine-tuning/jobs"
+            ]
+          },
+          {
+            "group": "Realtime",
+            "pages": [
+              "api/realtime/websocket"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Providers",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "providers/overview",
+              "providers/supported-providers"
+            ]
+          },
+          {
+            "group": "Major Providers",
+            "pages": [
+              "providers/openai",
+              "providers/anthropic",
+              "providers/azure-openai",
+              "providers/google-gemini",
+              "providers/bedrock",
+              "providers/cohere",
+              "providers/mistral"
+            ]
+          },
+          {
+            "group": "Specialized Providers",
+            "pages": [
+              "providers/together-ai",
+              "providers/anyscale",
+              "providers/perplexity",
+              "providers/groq",
+              "providers/deepinfra",
+              "providers/ollama"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Integrations",
+        "groups": [
+          {
+            "group": "Agent Frameworks",
+            "pages": [
+              "integrations/overview",
+              "integrations/langchain",
+              "integrations/llamaindex",
+              "integrations/autogen",
+              "integrations/crewai",
+              "integrations/phidata"
+            ]
+          },
+          {
+            "group": "SDKs",
+            "pages": [
+              "integrations/python",
+              "integrations/javascript",
+              "integrations/openai-sdk",
+              "integrations/rest-api"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Route to 250+ LLMs with unified API",
+    "Sub-1ms latency with 122kb footprint",
+    "Automatic fallbacks and retries",
+    "Load balancing across providers",
+    "50+ AI guardrails for safety",
+    "Multi-modal support (text, vision, audio, images)",
+    "Smart caching for cost reduction",
+    "MCP Gateway for centralized server management",
+    "Enterprise-ready with SOC2, HIPAA, GDPR compliance",
+    "Real-time API support with WebSockets"
+  ],
+  "publicApiSurface": [
+    "POST /v1/chat/completions",
+    "POST /v1/completions",
+    "POST /v1/embeddings",
+    "POST /v1/images/generations",
+    "POST /v1/images/edits",
+    "POST /v1/audio/speech",
+    "POST /v1/audio/transcriptions",
+    "POST /v1/audio/translations",
+    "GET /v1/models",
+    "POST /v1/messages",
+    "POST /v1/files",
+    "GET /v1/files",
+    "POST /v1/batches",
+    "GET /v1/batches",
+    "POST /v1/fine_tuning/jobs",
+    "GET /v1/realtime"
+  ]
+}
